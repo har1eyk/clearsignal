@@ -1,3 +1,5 @@
+import { WebMCP } from "./WebMCP";
+
 const Arrow = () => <span aria-hidden="true">↗</span>;
 
 const SignalChart = () => (
@@ -15,7 +17,8 @@ const SignalChart = () => (
 
 export default function Home() {
   return (
-    <main>
+    <main data-webmcp-enabled="true">
+      <WebMCP />
       <section className="hero" id="top">
         <nav className="nav shell" aria-label="Main navigation">
           <a className="wordmark" href="#top" aria-label="ClearSignal home"><span>CS</span> CLEAR<span className="mark">SIGNAL</span></a>
@@ -176,13 +179,13 @@ export default function Home() {
             <p>Tell us what you test and where the current process creates friction. An applications scientist will follow up with a focused next step.</p>
             <div className="contact-signal"><span/><span/><span/><span/><span/></div>
           </div>
-          <form className="contact-form">
-            <label>Name<input name="name" autoComplete="name" required placeholder="Your name" /></label>
-            <label>Work email<input type="email" name="email" autoComplete="email" required placeholder="you@company.com" /></label>
-            <div className="form-row"><label>Company<input name="company" autoComplete="organization" placeholder="Company" /></label><label>Role<input name="role" autoComplete="organization-title" placeholder="Your role" /></label></div>
-            <label>Application or sample type<input name="application" placeholder="e.g. biologic drug substance" /></label>
+          <form className="contact-form" id="contact-form">
+            <label>Name<input name="name" autoComplete="name" required maxLength={100} placeholder="Your name" /></label>
+            <label>Work email<input type="email" name="email" autoComplete="email" required maxLength={254} placeholder="you@company.com" /></label>
+            <div className="form-row"><label>Company<input name="company" autoComplete="organization" maxLength={120} placeholder="Company" /></label><label>Role<input name="role" autoComplete="organization-title" maxLength={120} placeholder="Your role" /></label></div>
+            <label>Application or sample type<input name="application" maxLength={160} placeholder="e.g. biologic drug substance" /></label>
             <label>Current testing method<select name="method" defaultValue=""><option value="" disabled>Select a method</option><option>Gel-clot</option><option>Chromogenic</option><option>Turbidimetric</option><option>Recombinant factor C</option><option>Other / evaluating</option></select></label>
-            <label>Message<textarea name="message" rows={3} placeholder="What would you like to improve?" /></label>
+            <label>Message<textarea name="message" rows={3} maxLength={1000} placeholder="What would you like to improve?" /></label>
             <label className="consent"><input type="checkbox" name="consent" required/><span>I agree to be contacted about this request. No marketing consent is preselected.</span></label>
             <button className="button button-amber" type="submit">Request a conversation <Arrow /></button>
           </form>
@@ -191,7 +194,7 @@ export default function Home() {
 
       <footer>
         <div className="shell footer-top"><a className="wordmark" href="#top"><span>CS</span> CLEAR<span className="mark">SIGNAL</span></a><p>Analytical clarity, from sample to answer.</p><a href="#contact">hello@clearsignal.example</a></div>
-        <div className="shell footer-bottom"><span>© 2026 ClearSignal concept</span><div><a href="#technology">Technology</a><a href="#quality">Resources</a><a href="#">Privacy</a><a href="#">Terms</a></div></div>
+        <div className="shell footer-bottom"><span>© 2026 ClearSignal concept</span><div><a href="#technology">Technology</a><a href="#quality">Resources</a><span>Privacy</span><span>Terms</span></div></div>
       </footer>
     </main>
   );
