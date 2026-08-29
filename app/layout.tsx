@@ -9,10 +9,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const socialImage = `${protocol}://${host}/og.png`;
 
   return {
-    title: "ClearSignal | Endotoxin Testing, Resolved",
+    title: "ClearSignal.bio | Fast Endotoxin Testing",
     description: "A clear, connected path from sample preparation to defensible endotoxin test results.",
-    openGraph: { title: "ClearSignal | From unknown sample to clear result", description: "Endotoxin testing, resolved.", type: "website", images: [{ url: socialImage, width: 1728, height: 909, alt: "ClearSignal sample-to-answer assay visualization" }] },
-    twitter: { card: "summary_large_image", title: "ClearSignal", description: "From unknown sample to clear result.", images: [socialImage] },
+    openGraph: { title: "ClearSignal | From unknown sample to clear result", description: "Endotoxin testing.", type: "website", images: [{ url: socialImage, width: 1728, height: 909, alt: "ClearSignal sample-to-answer assay visualization" }] },
+    twitter: { card: "summary_large_image", title: "ClearSignal", description: "From sample to result.", images: [socialImage] },
   };
 }
 
