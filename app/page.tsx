@@ -35,7 +35,7 @@ export default function Home() {
         <div className="hero-grid shell">
           <div className="hero-copy">
             <p className="eyebrow light">FAST ENDOTOXIN DETECTION</p>
-            <h1>From sample to <em>result.</em></h1>
+            <h1>From sample to <span className="gradient-result">result</span>.</h1>
             <p className="hero-lede">A more legible path through endotoxin testing—designed to help scientific teams move from assay setup to defensible evidence with confidence.</p>
             <div className="button-row">
               <a className="button button-amber" href="#contact">Request a demo <Arrow /></a>
