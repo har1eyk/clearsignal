@@ -1,5 +1,6 @@
 import { WebMCP } from "./WebMCP";
 import { BackgroundShader } from "./BackgroundShader";
+import { HorseshoeCrabArt } from "./HorseshoeCrabArt";
 
 const Arrow = () => <span aria-hidden="true">↗</span>;
 
@@ -38,21 +39,14 @@ export default function Home() {
           <div className="hero-copy">
             <p className="eyebrow light">FAST ENDOTOXIN DETECTION</p>
             <h1>From sample to <span className="gradient-result">result</span>.</h1>
-            <p className="hero-lede">A more legible path through endotoxin testing—designed to help scientific teams move from assay setup to defensible evidence with confidence.</p>
+            <p className="hero-lede">An agentic way to order the endotoxin assay for your biological samples.</p>
             <div className="button-row">
               <a className="button button-amber" href="#contact">Request a demo <Arrow /></a>
               <a className="text-link" href="#workflow">Explore the workflow <span aria-hidden="true">↓</span></a>
             </div>
             <div className="hero-notes"><span>01 / SAMPLE</span><span>02 / REACTION</span><span>03 / RESULT</span></div>
           </div>
-          <div className="assay-visual" aria-label="Sample moving through an analytical pathway">
-            <div className="orbit orbit-outer"/><div className="orbit orbit-inner"/>
-            <div className="sample-vial"><span className="vial-cap"/><span className="vial-fill"/><small>S-014</small></div>
-            <div className="sample-line"><span className="pulse"/></div>
-            <div className="detector"><span className="detector-core"/><span>READ</span></div>
-            <div className="result-readout"><small>ASSAY SIGNAL</small><strong>RESOLVED</strong><div className="mini-trace"/></div>
-            <span className="particle particle-a"/><span className="particle particle-b"/><span className="particle particle-c"/><span className="particle particle-d"/>
-          </div>
+          <HorseshoeCrabArt />
         </div>
       </section>
 
