@@ -1,4 +1,5 @@
 import { WebMCP } from "./WebMCP";
+import { BackgroundShader } from "./BackgroundShader";
 
 const Arrow = () => <span aria-hidden="true">↗</span>;
 
@@ -20,6 +21,7 @@ export default function Home() {
     <main data-webmcp-enabled="true">
       <WebMCP />
       <section className="hero" id="top">
+        <BackgroundShader />
         <nav className="nav shell" aria-label="Main navigation">
           <a className="wordmark" href="#top" aria-label="ClearSignal home"><span>CS</span> CLEAR<span className="mark">SIGNAL</span></a>
           <div className="nav-links">
