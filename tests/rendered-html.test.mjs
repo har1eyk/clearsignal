@@ -30,16 +30,19 @@ test("server-renders the ClearSignal marketing page", async () => {
 });
 
 test("laboratory endpoints reject unauthenticated requests consistently", async () => {
-  const response = await (await worker()).fetch(
-    new Request("http://localhost/api/lab/me", { headers: { accept: "application/json" } }),
-    environment,
-    executionContext,
-  );
-  assert.equal(response.status, 401);
-  const body = await response.json();
-  assert.equal(body.data, null);
-  assert.equal(body.error.code, "unauthenticated");
-  assert.equal(typeof body.requestId, "string");
+  const app = await worker();
+  for (const path of ["/api/lab/me", "/api/lab/dashboard-summary"]) {
+    const response = await app.fetch(
+      new Request(`http://localhost${path}`, { headers: { accept: "application/json" } }),
+      environment,
+      executionContext,
+    );
+    assert.equal(response.status, 401);
+    const body = await response.json();
+    assert.equal(body.data, null);
+    assert.equal(body.error.code, "unauthenticated");
+    assert.equal(typeof body.requestId, "string");
+  }
 });
 
 test("renders the account entry and recovery pages", async () => {
@@ -50,8 +53,21 @@ test("renders the account entry and recovery pages", async () => {
   assert.match(loginHtml, /Sign in to continue/);
   assert.match(loginHtml, /Sign up/);
   assert.match(loginHtml, /Forgot your password/);
+  assert.match(loginHtml, /data-webmcp-enabled="true"/);
 
   const reset = await app.fetch(new Request("http://localhost/reset-password", { headers: { accept: "text/html" } }), environment, executionContext);
   assert.equal(reset.status, 200);
   assert.match(await reset.text(), /Choose a new password/);
+});
+
+test("renders the new testing request route and intake shell", async () => {
+  const response = await (await worker()).fetch(
+    new Request("http://localhost/user/requests/new", { headers: { accept: "text/html" } }),
+    environment,
+    executionContext,
+  );
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /New testing request \| ClearSignal/);
+  assert.match(html, /Loading request workspace/);
 });

@@ -14,17 +14,28 @@ header containing 8–160 characters. Responses use:
 
 ## Primary workflow
 
-1. Create controlled SOP, method, instrument, calibration, reagent lot, and
+The signed-in dashboard reads `GET /api/lab/dashboard-summary`. It returns the
+current member's testing-request count, in-progress sample count, and distinct
+approved assay-run count; user and laboratory identity are always derived from
+the bearer session.
+
+1. Submit a multi-sample intake with `POST /api/lab/testing-requests`. This
+   creates the testing request and its samples atomically for any active lab
+   member. Samples remain pending specification until an admin or analyst calls
+   `PATCH /api/lab/samples/:id/specification` with the endotoxin limit, maximum
+   valid dilution, and a change reason.
+2. Create controlled SOP, method, instrument, calibration, reagent lot, and
    control-standard lot records under `/api/lab/reference/*`. Activate them
    through the corresponding `/*/:id/status` endpoint.
-2. Register a sample with `POST /api/lab/samples` and append receipt/custody
+3. Alternatively, register an already specified sample with `POST /api/lab/samples` and append receipt/custody
    records with `POST /api/lab/samples/:id/events`.
-3. Create a run using `POST /api/lab/runs`, assigning at least one sample.
-4. Add readings using `POST /api/lab/runs/:id/readings`, or upload the canonical
+4. Create a run using `POST /api/lab/runs`, assigning at least one fully
+   specified sample.
+5. Add readings using `POST /api/lab/runs/:id/readings`, or upload the canonical
    CSV to `POST /api/lab/runs/:id/import` as multipart field `file`.
-5. Calculate, submit, and review using the `/calculate`, `/submit`, and `/review`
+6. Calculate, submit, and review using the `/calculate`, `/submit`, and `/review`
    actions. Only valid latest calculations can be approved.
-6. Retrieve the reconstructable JSON or CSV report from
+7. Retrieve the reconstructable JSON or CSV report from
    `/api/lab/runs/:id/report?format=json|csv` and entity history from
    `/api/lab/audit`.
 
@@ -39,4 +50,3 @@ Approval records are attributable, timestamped review actions but are not
 21 CFR Part 11 electronic signatures. Acceptance thresholds are never seeded:
 an administrator must enter and activate criteria supported by the actual kit,
 SOP, and method-suitability work.
-

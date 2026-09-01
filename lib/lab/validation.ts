@@ -3,6 +3,50 @@ import { z } from "zod";
 const uuid = z.string().uuid();
 const optionalText = z.string().trim().max(2000).optional().nullable();
 
+const testingRequestSampleSchema = z.object({
+  external_id: z.string().trim().min(1, "Sample ID is required").max(120),
+  kind: z.enum(["original", "aliquot", "pool"]).default("original"),
+  product_name: z.string().trim().max(240).optional().nullable(),
+  product_lot: z.string().trim().max(120).optional().nullable(),
+  matrix: z.string().trim().min(1, "Matrix is required").max(240),
+  process_stage: z.string().trim().max(160).optional().nullable(),
+  collected_at: z.string().datetime({ offset: true }).optional().nullable(),
+  collected_by: z.string().trim().max(160).optional().nullable(),
+  storage_condition: z.string().trim().max(240).optional().nullable(),
+  quantity: z.number().nonnegative().optional().nullable(),
+  quantity_unit: z.string().trim().max(40).optional().nullable(),
+}).superRefine((sample, context) => {
+  if (sample.quantity != null && !sample.quantity_unit) {
+    context.addIssue({ code: "custom", path: ["quantity_unit"], message: "Quantity unit is required when quantity is entered" });
+  }
+  if (sample.quantity == null && sample.quantity_unit) {
+    context.addIssue({ code: "custom", path: ["quantity"], message: "Quantity is required when a unit is selected" });
+  }
+});
+
+export const testingRequestCreateSchema = z.object({
+  lab_id: uuid,
+  client_name: z.string().trim().max(240).optional().nullable(),
+  project_name: z.string().trim().min(1, "Project name is required").max(240),
+  purpose: z.string().trim().min(1, "Testing purpose is required").max(2000),
+  samples: z.array(testingRequestSampleSchema).min(1, "Add at least one sample").max(100),
+}).superRefine((request, context) => {
+  const seen = new Set<string>();
+  request.samples.forEach((sample, index) => {
+    const normalized = sample.external_id.toLocaleLowerCase();
+    if (seen.has(normalized)) {
+      context.addIssue({ code: "custom", path: ["samples", index, "external_id"], message: "Sample IDs must be unique within the request" });
+    }
+    seen.add(normalized);
+  });
+});
+
+export const sampleSpecificationSchema = z.object({
+  endotoxin_limit_eu_ml: z.number().nonnegative(),
+  maximum_valid_dilution: z.number().min(1),
+  reason: z.string().trim().min(1).max(1000),
+});
+
 export const sampleCreateSchema = z.object({
   lab_id: uuid,
   test_order_id: uuid.optional().nullable(),
@@ -146,4 +190,3 @@ export const statusChangeSchema = z.object({
   status: z.enum(["active", "retired"]),
   reason: z.string().trim().min(1).max(1000),
 });
-

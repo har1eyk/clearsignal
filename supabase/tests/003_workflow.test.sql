@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(13);
 
 insert into auth.users(
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -38,6 +38,26 @@ select set_config('request.jwt.claims','{"sub":"11000000-0000-4000-8000-00000000
 select lives_ok(
   $$select public.create_sample('{"lab_id":"21000000-0000-4000-8000-000000000001","external_id":"RFC-SAMPLE-1","kind":"original","matrix":"biologic","endotoxin_limit_eu_ml":2,"maximum_valid_dilution":4}'::jsonb,'workflow-sample-0001')$$,
   'sample is registered'
+);
+select lives_ok(
+  $$select public.create_testing_request('{"lab_id":"21000000-0000-4000-8000-000000000001","project_name":"Pending specifications","purpose":"In-process testing","samples":[{"external_id":"RFC-PENDING-1","kind":"original","matrix":"biologic"}]}'::jsonb,'workflow-request-0001')$$,
+  'testing request registers a sample without laboratory specifications'
+);
+select throws_ok(
+  $$select public.create_assay_run(jsonb_build_object(
+    'lab_id','21000000-0000-4000-8000-000000000001','run_number','RFC-RUN-PENDING',
+    'method_version_id','41000000-0000-4000-8000-000000000001',
+    'instrument_id','51000000-0000-4000-8000-000000000001',
+    'reagent_lot_id','61000000-0000-4000-8000-000000000001',
+    'standard_lot_id','61000000-0000-4000-8000-000000000002','plate_format',96,
+    'samples',jsonb_build_array(jsonb_build_object('sample_id',(select id from public.samples where external_id='RFC-PENDING-1'),'planned_dilution',2))
+  ),'workflow-run-pending-0001')$$,
+  'P0001', 'sample is not in this laboratory or is missing its endotoxin specification',
+  'samples without specifications cannot enter an assay run'
+);
+select lives_ok(
+  $$select public.set_sample_specification((select id from public.samples where external_id='RFC-PENDING-1'),2,4,'Laboratory review complete')$$,
+  'analyst assigns the pending laboratory specification'
 );
 select lives_ok(
   $$select public.create_assay_run(jsonb_build_object(

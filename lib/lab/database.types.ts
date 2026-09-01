@@ -1140,13 +1140,13 @@ export type Database = {
           created_at: string
           created_by: string
           disposition_reason: string | null
-          endotoxin_limit_eu_ml: number
+          endotoxin_limit_eu_ml: number | null
           external_id: string
           id: string
           kind: Database["public"]["Enums"]["sample_kind"]
           lab_id: string
           matrix: string
-          maximum_valid_dilution: number
+          maximum_valid_dilution: number | null
           process_stage: string | null
           product_lot: string | null
           product_name: string | null
@@ -1166,13 +1166,13 @@ export type Database = {
           created_at?: string
           created_by: string
           disposition_reason?: string | null
-          endotoxin_limit_eu_ml: number
+          endotoxin_limit_eu_ml?: number | null
           external_id: string
           id?: string
           kind?: Database["public"]["Enums"]["sample_kind"]
           lab_id: string
           matrix: string
-          maximum_valid_dilution: number
+          maximum_valid_dilution?: number | null
           process_stage?: string | null
           product_lot?: string | null
           product_name?: string | null
@@ -1192,13 +1192,13 @@ export type Database = {
           created_at?: string
           created_by?: string
           disposition_reason?: string | null
-          endotoxin_limit_eu_ml?: number
+          endotoxin_limit_eu_ml?: number | null
           external_id?: string
           id?: string
           kind?: Database["public"]["Enums"]["sample_kind"]
           lab_id?: string
           matrix?: string
-          maximum_valid_dilution?: number
+          maximum_valid_dilution?: number | null
           process_stage?: string | null
           product_lot?: string | null
           product_name?: string | null
@@ -1288,6 +1288,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          idempotency_key: string | null
           lab_id: string
           order_number: string
           project_name: string | null
@@ -1299,6 +1300,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          idempotency_key?: string | null
           lab_id: string
           order_number: string
           project_name?: string | null
@@ -1310,6 +1312,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          idempotency_key?: string | null
           lab_id?: string
           order_number?: string
           project_name?: string | null
@@ -1350,6 +1353,14 @@ export type Database = {
       create_sample: {
         Args: { p_idempotency_key?: string; p_payload: Json }
         Returns: string
+      }
+      create_testing_request: {
+        Args: { p_idempotency_key: string; p_payload: Json }
+        Returns: Json
+      }
+      get_user_dashboard_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       create_sop_version: { Args: { p_payload: Json }; Returns: string }
       has_lab_role: {
@@ -1412,6 +1423,15 @@ export type Database = {
           p_status: Database["public"]["Enums"]["controlled_status"]
         }
         Returns: undefined
+      }
+      set_sample_specification: {
+        Args: {
+          p_endotoxin_limit_eu_ml: number
+          p_maximum_valid_dilution: number
+          p_reason: string
+          p_sample_id: string
+        }
+        Returns: string
       }
       set_method_status: {
         Args: {

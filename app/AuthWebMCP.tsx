@@ -16,7 +16,36 @@ type WebMCPDocument = Document & {
   };
 };
 
+function prepareEmail(email: unknown) {
+  if (typeof email !== "string" || !email) return;
+  const field = document.querySelector<HTMLInputElement>("#auth-form input[name='email']");
+  if (!field) throw new Error("The email field is not available on this page.");
+  field.value = email;
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+  field.focus();
+}
+
 const tools: WebMCPTool[] = [
+  {
+    name: "begin_clearsignal_testing_request",
+    description: "Prepare the ClearSignal sign-in journey for a new testing request. This may fill the email field but never reads, fills, or submits a password; the user must authenticate themselves.",
+    inputSchema: {
+      type: "object",
+      properties: { email: { type: "string", format: "email", maxLength: 254 } },
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, untrustedContentHint: false },
+    execute: ({ email }) => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("next", "/user/requests/new");
+      history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+      const button = document.querySelector<HTMLButtonElement>('[data-auth-view="sign-in"]');
+      if (!button) throw new Error("The sign-in form is not available on this page.");
+      button.click();
+      prepareEmail(email);
+      return "The sign-in form is ready and will continue to the new testing request page. The user must enter their password and submit the sign-in form themselves.";
+    },
+  },
   {
     name: "get_clearsignal_account_help",
     description: "Explain the available ClearSignal sign-in, sign-up, and password-recovery paths without handling credentials.",
@@ -57,11 +86,7 @@ const tools: WebMCPTool[] = [
     },
     annotations: { readOnlyHint: false, untrustedContentHint: false },
     execute: ({ email }) => {
-      const field = document.querySelector<HTMLInputElement>("#auth-form input[name='email']");
-      if (!field) throw new Error("The email field is not available on this page.");
-      field.value = String(email);
-      field.dispatchEvent(new Event("input", { bubbles: true }));
-      field.focus();
+      prepareEmail(String(email));
       return "The email field is prepared. The user must enter their password, review the form, and submit it themselves.";
     },
   },
