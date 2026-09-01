@@ -1,8 +1,8 @@
 "use client";
+/* eslint-disable @next/next/no-html-link-for-pages */
 
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
 
 type Membership = { user: { display_name: string | null; email: string | null }; laboratory: { name: string }; role: string };
@@ -40,7 +40,7 @@ export function UserDashboard() {
 
   return (
     <main className="account-page">
-      <nav className="account-nav shell"><Link className="wordmark" href="/"><span>CS</span> CLEAR<span className="mark">SIGNAL</span></Link><button type="button" onClick={signOut}>Sign out</button></nav>
+      <nav className="account-nav shell"><a className="wordmark" href="/"><span>CS</span> CLEAR<span className="mark">SIGNAL</span></a><button type="button" onClick={signOut}>Sign out</button></nav>
       <section className="account-hero shell">
         <div><p className="eyebrow light">USER WORKSPACE</p><h1>Welcome, {name}.</h1><p>Your authenticated workspace is ready for traceable testing requests.</p></div>
         <div className="identity-card"><span>SIGNED IN AS</span><strong>{user.email}</strong>{membership && <><span>LABORATORY</span><strong>{membership.laboratory.name}</strong><span>ROLE</span><strong className="role-label">{membership.role}</strong></>}</div>

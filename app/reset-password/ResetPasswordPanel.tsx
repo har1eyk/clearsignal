@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
 
 export function ResetPasswordPanel() {
@@ -45,7 +44,7 @@ export function ResetPasswordPanel() {
       <p className="eyebrow">SECURE RECOVERY</p>
       <h1 id="reset-title">Choose a new password.</h1>
       {!ready && !error && <p className="auth-intro">Checking your recovery link…</p>}
-      {!ready && error && <><p className="form-status form-error" role="alert">{error}</p><Link className="text-link auth-back" href="/login">Request another link →</Link></>}
+      {!ready && error && <><p className="form-status form-error" role="alert">{error}</p><a className="text-link auth-back" href="/login">Request another link →</a></>}
       {ready && <form className="auth-form" onSubmit={submit}>
         <label>New password<input type="password" name="password" autoComplete="new-password" required minLength={8} /></label>
         <label>Confirm new password<input type="password" name="confirmation" autoComplete="new-password" required minLength={8} /></label>

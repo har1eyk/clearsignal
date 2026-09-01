@@ -1,5 +1,5 @@
+/* eslint-disable @next/next/no-html-link-for-pages */
 import type { Metadata } from "next";
-import Link from "next/link";
 import { AuthPanel } from "./AuthPanel";
 import { AuthWebMCP } from "../AuthWebMCP";
 
@@ -13,7 +13,7 @@ export default function LoginPage() {
     <main className="auth-shell" data-webmcp-enabled="true">
       <AuthWebMCP />
       <aside className="auth-story">
-        <Link className="wordmark" href="/" aria-label="ClearSignal home"><span>CS</span> CLEAR<span className="mark">SIGNAL</span></Link>
+        <a className="wordmark" href="/" aria-label="ClearSignal home"><span>CS</span> CLEAR<span className="mark">SIGNAL</span></a>
         <div>
           <p className="eyebrow light">RESEARCHER ACCESS</p>
           <h2>Every request starts with a clear identity.</h2>
