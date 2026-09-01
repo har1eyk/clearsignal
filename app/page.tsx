@@ -28,7 +28,7 @@ export default function Home() {
           <div className="nav-links">
             <a href="#technology">Technology</a><a href="#workflow">Workflow</a><a href="#performance">Performance</a><a href="#applications">Applications</a><a href="#quality">Resources</a>
           </div>
-          <a className="button button-small button-cream" href="#contact">Talk to a scientist <Arrow /></a>
+          <a className="button button-small button-cream" href="/login">Login <Arrow /></a>
           <details className="mobile-menu">
             <summary aria-label="Open navigation">Menu</summary>
             <div><a href="#technology">Technology</a><a href="#workflow">Workflow</a><a href="#performance">Performance</a><a href="#applications">Applications</a><a href="#contact">Contact</a></div>
@@ -39,9 +39,9 @@ export default function Home() {
           <div className="hero-copy">
             <p className="eyebrow light">FAST ENDOTOXIN DETECTION</p>
             <h1>From sample to <span className="gradient-result">result</span>.</h1>
-            <p className="hero-lede">An agentic way to order the endotoxin assay for your biological samples.</p>
+            <p className="hero-lede">An agentic way to order the endotoxin assay for biological samples.</p>
             <div className="button-row">
-              <a className="button button-amber" href="#contact">Request a demo <Arrow /></a>
+              <a className="button button-amber" href="/login?next=/user">Order Testing <Arrow /></a>
               <a className="text-link" href="#workflow">Explore the workflow <span aria-hidden="true">↓</span></a>
             </div>
             <div className="hero-notes"><span>01 / SAMPLE</span><span>02 / REACTION</span><span>03 / RESULT</span></div>

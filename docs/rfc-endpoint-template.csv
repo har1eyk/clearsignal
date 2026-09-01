@@ -1,0 +1,14 @@
+well,role,sample_external_id,replicate,dilution_factor,standard_eu_ml,spike_eu_ml,fluorescence_rfu
+A1,blank,,1,1,,,0
+A2,blank,,2,1,,,0
+B1,standard,,1,1,0.1,,0
+B2,standard,,2,1,0.1,,0
+C1,standard,,1,1,1,,0
+C2,standard,,2,1,1,,0
+D1,standard,,1,1,10,,0
+D2,standard,,2,1,10,,0
+E1,sample,SAMPLE-ID,1,1,,,0
+E2,sample,SAMPLE-ID,2,1,,,0
+F1,ppc,SAMPLE-ID,1,1,,1,0
+F2,ppc,SAMPLE-ID,2,1,,1,0
+

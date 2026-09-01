@@ -1,4 +1,4 @@
-// Intentionally empty by default.
-// Add Drizzle tables here when the site actually needs a database.
-// See examples/d1/db/schema.ts for an opt-in example.
-export {};
+// The authoritative PostgreSQL schema lives in supabase/migrations.
+// This compatibility module prevents older starter imports from accidentally
+// defining a second, divergent schema.
+export type { Database } from "../lib/lab/database.types";

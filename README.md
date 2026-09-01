@@ -1,100 +1,93 @@
-# vinext-starter
+# ClearSignal rFC laboratory backend
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+ClearSignal is a vinext/Cloudflare site with a Supabase-backed research
+laboratory API for recombinant factor C endpoint fluorescence testing. It keeps
+sample identity, custody, controlled methods, raw plate data, calculations,
+review decisions, and audit history connected from sample receipt through the
+final report.
 
-## Prerequisites
+This is a research prototype with GLP-style traceability. It is not, by itself,
+a validated GLP system or a 21 CFR Part 11 electronic-record/signature system.
 
-- Node.js `>=22.13.0`
+## Local application setup
 
-## Quick Start
+Requirements:
+
+- Node.js 22.13 or newer
+- Docker Desktop for the local Supabase stack and database tests
+
+Install and configure:
 
 ```bash
 npm install
+cp .env.example .env.local
+npm run db:start
+npm run db:reset
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` to the local values printed by
+`npm run db:start`. Self-service sign-up creates a researcher profile but does
+not grant laboratory access. Bootstrap the first laboratory administrator from
+SQL executed as the database owner:
 
-## Included Shape
-
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
-
-The user ID is stable for the same user on the same Site and different across Sites. Email and name are intended for display or contact purposes.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```sql
+select public.bootstrap_lab_admin(
+  (select id from auth.users where email = 'your-authorized-user@example.com'),
+  'ClearSignal'
+);
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+There is deliberately no public operation that can claim the first admin role.
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+## Remote Supabase deployment
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+1. Rotate any database password that has been shared in chat, tickets, or other
+   non-secret channels.
+2. Put the new direct connection string in the local, ignored
+   `SUPABASE_DB_URL` variable. Never use it in a browser or deployed bundle.
+3. Apply the migration with `npm run db:push -- --db-url "$SUPABASE_DB_URL"`, or
+   link the CLI to the project and run `npm run db:push`.
+4. Enable email/password sign-up and add the deployed `/user` and
+   `/reset-password` URLs to the allowed Auth redirect URLs. New accounts remain
+   outside every laboratory until an administrator grants membership.
+5. Bootstrap the first administrator through the SQL Editor as shown above.
+6. Configure `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as server environment
+   variables in the deployed site.
+7. Regenerate checked types with `npm run db:types` after schema changes.
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+Runtime requests use Supabase Auth, the HTTPS Data API, RLS, and private
+Supabase Storage. The direct database connection is migration-only. No
+service-role key is required by the application.
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+## Laboratory workflow
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+- Admins create and activate SOP/method versions, instruments, calibration
+  events, reagent lots, and control-standard lots.
+- Analysts register and receive samples, recording every custody event.
+- Endpoint RFU can be entered as JSON or imported using
+  [the canonical CSV template](docs/rfc-endpoint-template.csv).
+- Each calculation is a new immutable revision. It retains its input hash,
+  standard curve, validity diagnostics, PPC recovery, dilution correction, and
+  sample decisions.
+- Calculated runs are submitted and then approved, rejected, or later
+  invalidated. Self-review is allowed for the creating analyst in this
+  prototype and remains fully attributed.
+- Approved report snapshots cannot be overwritten. Corrections require a new
+  run linked with `supersedes_run_id`.
 
-## Useful Commands
+API details are in [docs/api.md](docs/api.md).
 
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+## Verification
 
-## Learn More
+```bash
+npm run test:unit
+npm run test:db
+npm test
+npm run lint
+```
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+`test:unit` covers the CSV contract and rFC calculation failure modes.
+`test:db` runs migration and RLS assertions against local Supabase. `npm test`
+also builds the Cloudflare application and verifies the rendered site and the
+unauthenticated API boundary.
