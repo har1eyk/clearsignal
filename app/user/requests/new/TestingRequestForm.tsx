@@ -5,11 +5,14 @@ import type { FormEvent, ReactNode } from "react";
 import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
-import { createTestingRequest, type CreatedTestingRequest } from "@/lib/lab/testing-request-client";
+import { type CreatedTestingRequest } from "@/lib/lab/testing-request-client";
+import { confirmEndotoxinOrder, previewTestingRequestOrder } from "@/lib/lab/endotoxin-order-client";
+import { STANDARD_ENDOTOXIN_TEST, centsToDollars, type EndotoxinOrderPreview } from "@/lib/lab/endotoxin-order";
 import { testingRequestCreateSchema } from "@/lib/lab/validation";
 import { TestingRequestShader } from "./TestingRequestShader";
 import { TestingRequestWebMCP } from "./TestingRequestWebMCP";
 import { ScienceConfetti } from "./ScienceConfetti";
+import { TestingRequestPriceConfirmation } from "./TestingRequestPriceConfirmation";
 
 type Membership = {
   user: { display_name: string | null; email: string | null };
@@ -56,6 +59,10 @@ function optional(value: string): string | null {
   return trimmed || null;
 }
 
+function money(value: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: STANDARD_ENDOTOXIN_TEST.currency }).format(value);
+}
+
 export function TestingRequestForm() {
   const [session, setSession] = useState<Session | null>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
@@ -66,12 +73,12 @@ export function TestingRequestForm() {
   const [samples, setSamples] = useState<SampleDraft[]>([blankSample("sample-1")]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [operation, setOperation] = useState<"idle" | "quoting" | "confirming">("idle");
+  const [pricePreview, setPricePreview] = useState<EndotoxinOrderPreview | null>(null);
   const [dirty, setDirty] = useState(false);
   const [created, setCreated] = useState<CreatedTestingRequest | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const nextSampleKey = useRef(2);
-  const idempotencyKey = useRef<string | null>(null);
 
   useEffect(() => {
     getBrowserSupabase().then(async (supabase) => {
@@ -104,7 +111,7 @@ export function TestingRequestForm() {
 
   function markDirty() {
     setDirty(true);
-    idempotencyKey.current = null;
+    setPricePreview(null);
     if (submitError) setSubmitError("");
   }
 
@@ -185,23 +192,37 @@ export function TestingRequestForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session || !membership || submitting) return;
+    if (!session || !membership || operation !== "idle") return;
     const validPayload = validate();
     if (!validPayload) return;
-    setSubmitting(true);
+    setOperation("quoting");
     setSubmitError("");
-    idempotencyKey.current ||= crypto.randomUUID();
     try {
-      const result = await createTestingRequest({
+      const preview = await previewTestingRequestOrder({
         accessToken: session.access_token,
-        payload: validPayload,
-        submissionKey: idempotencyKey.current,
+        input: { details: validPayload, currency: STANDARD_ENDOTOXIN_TEST.currency },
       });
+      setPricePreview(preview);
+    } catch (candidate) {
+      setSubmitError(candidate instanceof Error ? candidate.message : "The testing request could not be priced.");
+    } finally {
+      setOperation("idle");
+    }
+  }
+
+  async function confirmPricedOrder() {
+    if (!session || !pricePreview || operation !== "idle") return;
+    setOperation("confirming");
+    setSubmitError("");
+    try {
+      const result = await confirmEndotoxinOrder({ accessToken: session.access_token, intent: pricePreview.intent });
+      setPricePreview(null);
       createdFromWebMCP(result);
     } catch (candidate) {
-      setSubmitError(candidate instanceof Error ? candidate.message : "The testing request could not be submitted.");
+      setSubmitError(candidate instanceof Error ? candidate.message : "The priced testing request could not be submitted.");
+      setPricePreview(null);
     } finally {
-      setSubmitting(false);
+      setOperation("idle");
     }
   }
 
@@ -240,7 +261,16 @@ export function TestingRequestForm() {
         </section>
       ) : membership && session ? (
         <>
-          <TestingRequestWebMCP accessToken={session.access_token} laboratory={membership.laboratory.name} onCreated={createdFromWebMCP} />
+          <TestingRequestWebMCP accessToken={session.access_token} labId={membership.laboratory.id} laboratory={membership.laboratory.name} onCreated={createdFromWebMCP} />
+          {pricePreview && (
+            <TestingRequestPriceConfirmation
+              preview={pricePreview}
+              laboratory={membership.laboratory.name}
+              confirming={operation === "confirming"}
+              onCancel={() => setPricePreview(null)}
+              onConfirm={confirmPricedOrder}
+            />
+          )}
           <header className="request-hero shell">
             <div>
               <p className="eyebrow light">NEW TESTING REQUEST</p>
@@ -339,10 +369,10 @@ export function TestingRequestForm() {
                   <div><span>PROJECT</span><strong>{projectName || "Not entered"}</strong><small>{clientName || "Internal / no client specified"}</small></div>
                   <div><span>PURPOSE</span><p>{purpose || "No testing purpose entered."}</p></div>
                   <div><span>SAMPLES</span><strong>{String(samples.length).padStart(2, "0")}</strong><small>{samples.map((sample) => sample.external_id || "Untitled").join(" / ")}</small></div>
-                  <div className="review-spec"><span>LABORATORY SPECIFICATIONS</span><p>Endotoxin limits and maximum valid dilutions will be assigned during laboratory review.</p></div>
+                  <div className="review-spec"><span>PRICING</span><strong>{samples.length} × {money(centsToDollars(STANDARD_ENDOTOXIN_TEST.unitPriceCents))} = {money(centsToDollars(STANDARD_ENDOTOXIN_TEST.unitPriceCents * samples.length))}</strong><small>ClearSignal confirms this price on the server before creating an order.</small></div>
                 </div>
                 {submitError && <p className="request-submit-error" role="alert">{submitError}</p>}
-                <div className="request-submit-row"><p>By submitting, you confirm these sample details are accurate to the best of your knowledge.</p><button className="button button-amber" type="submit" disabled={submitting}>{submitting ? "Submitting…" : "Submit request"}<span aria-hidden="true">→</span></button></div>
+                <div className="request-submit-row"><p>Review the server-priced total next. Your draft cannot become an order until you confirm that quote.</p><button className="button button-amber" type="submit" disabled={operation !== "idle"}>{operation === "quoting" ? "Getting price…" : "Review priced order"}<span aria-hidden="true">→</span></button></div>
               </section>
             </form>
           </div>

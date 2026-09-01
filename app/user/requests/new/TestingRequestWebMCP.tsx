@@ -5,6 +5,7 @@ import { z } from "zod";
 import { confirmEndotoxinOrder, previewEndotoxinOrder } from "@/lib/lab/endotoxin-order-client";
 import { endotoxinOrderInputSchema, orderFingerprint, type EndotoxinOrderPreview } from "@/lib/lab/endotoxin-order";
 import { TestingRequestClientError, type CreatedTestingRequest } from "@/lib/lab/testing-request-client";
+import { TestingRequestPriceConfirmation } from "./TestingRequestPriceConfirmation";
 
 type ToolAnnotations = {
   readOnlyHint?: boolean;
@@ -79,22 +80,19 @@ function clearCachedPreview() {
   sessionStorage.removeItem(PENDING_ORDER_KEY);
 }
 
-function money(value: number, currency: string) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(value);
-}
-
 export function TestingRequestWebMCP({
   accessToken,
+  labId,
   laboratory,
   onCreated,
 }: {
   accessToken: string;
+  labId: string;
   laboratory: string;
   onCreated: (created: CreatedTestingRequest) => void;
 }) {
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
   const confirmationRef = useRef<ConfirmationState | null>(null);
-  const approveButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const settleConfirmation = useCallback((approved: boolean) => {
     const pending = confirmationRef.current;
@@ -118,19 +116,6 @@ export function TestingRequestWebMCP({
     if (confirmationRef.current) confirmationRef.current.resolve(false);
     confirmationRef.current = null;
   }, []);
-
-  useEffect(() => {
-    if (confirmation) approveButtonRef.current?.focus();
-  }, [confirmation]);
-
-  useEffect(() => {
-    if (!confirmation) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") settleConfirmation(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmation, settleConfirmation]);
 
   useEffect(() => {
     const modelContext = (document as WebMCPDocument).modelContext;
@@ -173,7 +158,7 @@ export function TestingRequestWebMCP({
           const fingerprint = orderFingerprint(input);
           let preview = readCachedPreview(fingerprint);
           if (!preview) {
-            preview = await previewEndotoxinOrder({ accessToken, input, signal: options?.signal });
+            preview = await previewEndotoxinOrder({ accessToken, labId, input, signal: options?.signal });
             cachePreview(fingerprint, preview);
           }
 
@@ -208,30 +193,15 @@ export function TestingRequestWebMCP({
       if (!controller.signal.aborted) console.warn("ClearSignal ordering tool could not be registered.", error);
     });
     return () => controller.abort();
-  }, [accessToken, onCreated, requestConfirmation]);
+  }, [accessToken, labId, onCreated, requestConfirmation]);
 
   if (!confirmation) return null;
-  const { preview } = confirmation;
   return (
-    <div className="order-confirmation-backdrop" role="presentation">
-      <section className="order-confirmation-dialog" role="dialog" aria-modal="true" aria-labelledby="order-confirmation-title" aria-describedby="order-confirmation-description">
-        <p className="eyebrow">PRICED ORDER</p>
-        <h2 id="order-confirmation-title">Confirm this endotoxin order.</h2>
-        <p id="order-confirmation-description">ClearSignal verified that the unit price is strictly below your limit. No order exists until you approve.</p>
-        <dl>
-          <div><dt>Laboratory</dt><dd>{preview.laboratory || laboratory}</dd></div>
-          <div><dt>Service</dt><dd>{preview.service}</dd></div>
-          <div><dt>Samples</dt><dd>{preview.sample_ids.join(" / ")}</dd></div>
-          <div><dt>Price per test</dt><dd>{money(preview.unit_price, preview.currency)}</dd></div>
-          <div><dt>Strict limit</dt><dd>Less than {money(preview.spend_less_than_each, preview.currency)}</dd></div>
-          <div><dt>Order total</dt><dd>{money(preview.total, preview.currency)}</dd></div>
-        </dl>
-        <p className="order-confirmation-note">Sample matrix and assay specifications may be completed during laboratory review before testing starts.</p>
-        <div className="order-confirmation-actions">
-          <button type="button" className="button button-cream" onClick={() => settleConfirmation(false)}>Cancel</button>
-          <button ref={approveButtonRef} type="button" className="button button-amber" onClick={() => settleConfirmation(true)}>Confirm &amp; order <span aria-hidden="true">→</span></button>
-        </div>
-      </section>
-    </div>
+    <TestingRequestPriceConfirmation
+      preview={confirmation.preview}
+      laboratory={laboratory}
+      onCancel={() => settleConfirmation(false)}
+      onConfirm={() => settleConfirmation(true)}
+    />
   );
 }

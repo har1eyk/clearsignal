@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { testingRequestCreateSchema } from "./validation";
 
 export const STANDARD_ENDOTOXIN_TEST = {
   code: "standard_endotoxin_test",
   name: "Standard endotoxin test",
   version: "2026-09-01",
   currency: "USD" as const,
-  unitPriceCents: 35_000,
+  unitPriceCents: 37_500,
 } as const;
 
 const sampleId = z.string().trim().min(1, "Sample ID is required").max(120);
@@ -27,9 +28,18 @@ export const endotoxinOrderInputSchema = z.object({
 
 export type EndotoxinOrderInput = z.infer<typeof endotoxinOrderInputSchema>;
 
+export const testingRequestQuoteInputSchema = z.object({
+  details: testingRequestCreateSchema,
+  spend_less_than_each: z.number().positive().finite().max(1_000_000).optional(),
+  currency: z.literal("USD").default("USD"),
+});
+
+export type TestingRequestQuoteInput = z.infer<typeof testingRequestQuoteInputSchema>;
+
 export const pricedOrderIntentSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(2),
   quote_id: z.string().uuid(),
+  draft_id: z.string().uuid(),
   idempotency_key: z.string().min(8).max(160),
   user_id: z.string().uuid(),
   lab_id: z.string().uuid(),
@@ -38,7 +48,7 @@ export const pricedOrderIntentSchema = z.object({
   catalog_version: z.string().min(1).max(80),
   unit_price_cents: z.number().int().positive(),
   total_price_cents: z.number().int().positive(),
-  spend_less_than_each_cents: z.number().int().positive(),
+  spend_less_than_each_cents: z.number().int().positive().nullable(),
   currency: z.literal("USD"),
   issued_at: z.string().datetime({ offset: true }),
   expires_at: z.string().datetime({ offset: true }),
@@ -56,7 +66,7 @@ export type EndotoxinOrderPreview = {
   unit_price: number;
   total: number;
   currency: "USD";
-  spend_less_than_each: number;
+  spend_less_than_each?: number;
   expires_at: string;
 };
 

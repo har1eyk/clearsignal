@@ -6,9 +6,10 @@ import { signOrderIntent, verifyOrderIntent } from "../../lib/lab/order-intent";
 process.env.ORDER_INTENT_SIGNING_SECRET = "test-only-signing-secret-with-at-least-32-characters";
 
 const intent: PricedOrderIntent = {
-  version: 1,
+  version: 2,
   quote_id: "10000000-0000-4000-8000-000000000001",
-  idempotency_key: "webmcp-order-10000000-0000-4000-8000-000000000001",
+  draft_id: "10000000-0000-4000-8000-000000000002",
+  idempotency_key: "testing-request-10000000-0000-4000-8000-000000000001",
   user_id: "20000000-0000-4000-8000-000000000001",
   lab_id: "30000000-0000-4000-8000-000000000001",
   sample_ids: ["ID0001", "ID0002"],

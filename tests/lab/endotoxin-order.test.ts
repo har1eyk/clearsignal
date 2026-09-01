@@ -19,8 +19,9 @@ test("parses the one-prompt order contract without extra metadata", () => {
 });
 
 test("treats the spending bound as strict", () => {
-  assert.equal(STANDARD_ENDOTOXIN_TEST.unitPriceCents < dollarsToCents(350), false);
-  assert.equal(STANDARD_ENDOTOXIN_TEST.unitPriceCents < dollarsToCents(350.01), true);
+  const unitPrice = STANDARD_ENDOTOXIN_TEST.unitPriceCents / 100;
+  assert.equal(STANDARD_ENDOTOXIN_TEST.unitPriceCents < dollarsToCents(unitPrice), false);
+  assert.equal(STANDARD_ENDOTOXIN_TEST.unitPriceCents < dollarsToCents(unitPrice + 0.01), true);
 });
 
 test("rejects duplicate sample IDs without regard to case", () => {
@@ -42,4 +43,16 @@ test("exposes one narrow ordering tool and retires the old multi-tool flow", asy
   assert.match(source, /sample_ids/);
   assert.match(source, /spend_less_than_each/);
   assert.doesNotMatch(source, /get_testing_request_requirements|prepare_testing_request|submit_testing_request/);
+});
+
+test("the human review multiplies the shared unit price by the sample count", async () => {
+  const source = await readFile(new URL("../../app/user/requests/new/TestingRequestForm.tsx", import.meta.url), "utf8");
+  assert.match(source, /STANDARD_ENDOTOXIN_TEST\.unitPriceCents \* samples\.length/);
+  assert.match(source, /Review priced order/);
+  assert.doesNotMatch(source, /createTestingRequest/);
+});
+
+test("the atomic database guard matches the current catalog price source", async () => {
+  const migration = await readFile(new URL("../../supabase/migrations/20260901040000_priced_testing_request_drafts.sql", import.meta.url), "utf8");
+  assert.match(migration, new RegExp(`p_unit_price_cents <> ${STANDARD_ENDOTOXIN_TEST.unitPriceCents}`));
 });

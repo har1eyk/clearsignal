@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(22);
 
 insert into auth.users(
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -40,22 +40,40 @@ select lives_ok(
   'sample is registered'
 );
 select lives_ok(
-  $$select public.create_testing_request('{"lab_id":"21000000-0000-4000-8000-000000000001","project_name":"Pending specifications","purpose":"In-process testing","samples":[{"external_id":"RFC-PENDING-1","kind":"original","matrix":null}],"catalog_item":"standard_endotoxin_test","catalog_version":"2026-09-01","unit_price_cents":35000,"total_price_cents":35000,"currency":"USD","spend_less_than_each_cents":40000,"quote_confirmed_at":"2026-09-01T16:00:00Z"}'::jsonb,'workflow-request-0001')$$,
-  'priced testing request registers a sample with matrix pending'
+  $$select public.create_testing_request_draft('{"lab_id":"21000000-0000-4000-8000-000000000001","project_name":"Pending specifications","purpose":"In-process testing","samples":[{"external_id":"RFC-PENDING-1","kind":"original","matrix":null}]}'::jsonb)$$,
+  'request details create an unpriced draft'
 );
 select results_eq(
-  $$select unit_price_cents = 35000 and total_price_cents = 35000 and spend_less_than_each_cents = 40000 and quote_confirmed_at is not null from public.test_orders where idempotency_key='workflow-request-0001'$$,
+  $$select count(*) from public.test_orders where created_by='11000000-0000-4000-8000-000000000001'$$,
+  array[0::bigint], 'an unpriced draft is not an order'
+);
+select lives_ok(
+  $$select public.confirm_testing_request_draft(
+    (select id from public.testing_request_drafts where request_payload->>'project_name'='Pending specifications'),
+    'workflow-request-0001','standard_endotoxin_test','2026-09-01',37500,37500,'USD',40000,'2026-09-01T16:00:00Z'
+  )$$,
+  'signed price confirmation atomically registers the order and pending sample'
+);
+select results_eq(
+  $$select unit_price_cents = 37500 and total_price_cents = 37500 and spend_less_than_each_cents = 40000 and quote_confirmed_at is not null from public.test_orders where idempotency_key='workflow-request-0001'$$,
   array[true], 'confirmed catalog pricing is retained on the order'
 );
 select results_eq(
   $$select count(*) from public.samples where external_id='RFC-PENDING-1' and matrix is null$$,
   array[1::bigint], 'retrying the same priced order keeps one sample record'
-) from public.create_testing_request(
-  '{"lab_id":"21000000-0000-4000-8000-000000000001","project_name":"Pending specifications","purpose":"In-process testing","samples":[{"external_id":"RFC-PENDING-1","kind":"original","matrix":null}],"unit_price_cents":35000,"total_price_cents":35000,"spend_less_than_each_cents":40000}'::jsonb,
-  'workflow-request-0001'
+) from public.confirm_testing_request_draft(
+  (select id from public.testing_request_drafts where request_payload->>'project_name'='Pending specifications'),
+  'workflow-request-0001','standard_endotoxin_test','2026-09-01',37500,37500,'USD',40000,'2026-09-01T16:00:00Z'
+);
+select lives_ok(
+  $$select public.create_testing_request_draft('{"lab_id":"21000000-0000-4000-8000-000000000001","project_name":"At cap","purpose":"Strict price test","samples":[{"external_id":"RFC-AT-CAP","kind":"original","matrix":null}]}'::jsonb)$$,
+  'strict-cap request remains an unpriced draft before quoting'
 );
 select throws_ok(
-  $$select public.create_testing_request('{"lab_id":"21000000-0000-4000-8000-000000000001","project_name":"At cap","purpose":"Strict price test","samples":[{"external_id":"RFC-AT-CAP","kind":"original","matrix":null}],"spend_less_than_each_cents":35000}'::jsonb,'workflow-request-at-cap')$$,
+  $$select public.confirm_testing_request_draft(
+    (select id from public.testing_request_drafts where request_payload->>'project_name'='At cap'),
+    'workflow-request-at-cap','standard_endotoxin_test','2026-09-01',37500,37500,'USD',37500,'2026-09-01T16:00:00Z'
+  )$$,
   'P0001', 'price cap exceeded', 'a unit price equal to the strict limit is rejected'
 );
 select throws_ok(

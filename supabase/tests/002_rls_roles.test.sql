@@ -36,22 +36,22 @@ select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001'
 select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 select results_eq('select count(*) from public.samples', array[1::bigint], 'admin reads laboratory samples');
 select lives_ok(
-  $$select public.create_testing_request('{"lab_id":"20000000-0000-4000-8000-000000000001","project_name":"Admin request","purpose":"Role verification","samples":[{"external_id":"ADMIN-REQUESTED","kind":"original","matrix":"biologic"}]}'::jsonb,'admin-request-0001')$$,
-  'admin can create a testing request'
+  $$select public.create_testing_request_draft('{"lab_id":"20000000-0000-4000-8000-000000000001","project_name":"Admin request","purpose":"Role verification","samples":[{"external_id":"ADMIN-REQUESTED","kind":"original","matrix":"biologic"}]}'::jsonb)$$,
+  'admin can create an unpriced testing request draft'
 );
 reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',true);
 select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
-select results_eq('select count(*) from public.samples', array[2::bigint], 'analyst reads laboratory samples');
+select results_eq('select count(*) from public.samples', array[1::bigint], 'analyst reads laboratory samples');
 select lives_ok(
   $$select public.create_sample('{"lab_id":"20000000-0000-4000-8000-000000000001","external_id":"ANALYST-CREATED","kind":"original","matrix":"biologic","endotoxin_limit_eu_ml":2,"maximum_valid_dilution":4}'::jsonb,'analyst-create-0001')$$,
   'analyst creates a sample only through the controlled RPC'
 );
 select lives_ok(
-  $$select public.create_testing_request('{"lab_id":"20000000-0000-4000-8000-000000000001","project_name":"Analyst request","purpose":"Role verification","samples":[{"external_id":"ANALYST-REQUESTED","kind":"original","matrix":"biologic"}]}'::jsonb,'analyst-request-0001')$$,
-  'analyst can create a testing request'
+  $$select public.create_testing_request_draft('{"lab_id":"20000000-0000-4000-8000-000000000001","project_name":"Analyst request","purpose":"Role verification","samples":[{"external_id":"ANALYST-REQUESTED","kind":"original","matrix":"biologic"}]}'::jsonb)$$,
+  'analyst can create an unpriced testing request draft'
 );
 select results_eq(
   $$select count(*) > 0 from public.audit_events where entity_type = 'samples' and actor_id = '10000000-0000-4000-8000-000000000002'$$,
@@ -67,10 +67,10 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
 select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000003","role":"authenticated"}',true);
-select results_eq('select count(*) from public.samples', array[4::bigint], 'reviewer reads laboratory samples');
+select results_eq('select count(*) from public.samples', array[2::bigint], 'reviewer reads laboratory samples');
 select lives_ok(
-  $$select public.create_testing_request('{"lab_id":"20000000-0000-4000-8000-000000000001","project_name":"Reviewer request","purpose":"Role verification","samples":[{"external_id":"REVIEWER-REQUESTED","kind":"original","matrix":"biologic"}]}'::jsonb,'reviewer-request-0001')$$,
-  'reviewer can create a testing request'
+  $$select public.create_testing_request_draft('{"lab_id":"20000000-0000-4000-8000-000000000001","project_name":"Reviewer request","purpose":"Role verification","samples":[{"external_id":"REVIEWER-REQUESTED","kind":"original","matrix":"biologic"}]}'::jsonb)$$,
+  'reviewer can create an unpriced testing request draft'
 );
 select throws_ok(
   $$select public.create_sample('{"lab_id":"20000000-0000-4000-8000-000000000001","external_id":"REVIEWER-CREATED","kind":"original","matrix":"biologic","endotoxin_limit_eu_ml":2,"maximum_valid_dilution":4}'::jsonb,'reviewer-create-0001')$$,
@@ -81,10 +81,10 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000004',true);
 select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000004","role":"authenticated"}',true);
-select results_eq('select count(*) from public.samples', array[5::bigint], 'viewer reads laboratory samples');
+select results_eq('select count(*) from public.samples', array[2::bigint], 'viewer reads laboratory samples');
 select lives_ok(
-  $$select public.create_testing_request('{"lab_id":"20000000-0000-4000-8000-000000000001","project_name":"Viewer request","purpose":"Role verification","samples":[{"external_id":"VIEWER-REQUESTED","kind":"original","matrix":"biologic"}]}'::jsonb,'viewer-request-0001')$$,
-  'viewer can create a testing request'
+  $$select public.create_testing_request_draft('{"lab_id":"20000000-0000-4000-8000-000000000001","project_name":"Viewer request","purpose":"Role verification","samples":[{"external_id":"VIEWER-REQUESTED","kind":"original","matrix":"biologic"}]}'::jsonb)$$,
+  'viewer can create an unpriced testing request draft'
 );
 select throws_ok(
   $$select public.create_sample('{"lab_id":"20000000-0000-4000-8000-000000000001","external_id":"VIEWER-CREATED","kind":"original","matrix":"biologic","endotoxin_limit_eu_ml":2,"maximum_valid_dilution":4}'::jsonb,'viewer-create-0001')$$,

@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     ) {
       throw new ApiError(409, "The catalog changed; request a current price", "catalog_changed");
     }
-    if (intent.unit_price_cents >= intent.spend_less_than_each_cents) {
+    if (intent.spend_less_than_each_cents != null && intent.unit_price_cents >= intent.spend_less_than_each_cents) {
       throw new ApiError(409, "The current price does not satisfy the strict per-test price limit", "price_cap_exceeded", {
         unit_price: centsToDollars(intent.unit_price_cents),
         spend_less_than_each: centsToDollars(intent.spend_less_than_each_cents),
@@ -43,25 +43,16 @@ export async function POST(request: Request) {
       });
     }
 
-    const date = intent.issued_at.slice(0, 10);
-    const payload = {
-      lab_id: context.labId,
-      client_name: null,
-      project_name: `Endotoxin testing — ${date}`,
-      purpose: "Quantify endotoxin in submitted samples.",
-      samples: intent.sample_ids.map((externalId) => ({ external_id: externalId, kind: "original", matrix: null })),
-      catalog_item: intent.catalog_item,
-      catalog_version: intent.catalog_version,
-      unit_price_cents: intent.unit_price_cents,
-      total_price_cents: intent.total_price_cents,
-      currency: intent.currency,
-      spend_less_than_each_cents: intent.spend_less_than_each_cents,
-      quote_confirmed_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await context.supabase.rpc("create_testing_request", {
-      p_payload: payload,
+    const { data, error } = await context.supabase.rpc("confirm_testing_request_draft", {
+      p_draft_id: intent.draft_id,
       p_idempotency_key: intent.idempotency_key,
+      p_catalog_item: intent.catalog_item,
+      p_catalog_version: intent.catalog_version,
+      p_unit_price_cents: intent.unit_price_cents,
+      p_total_price_cents: intent.total_price_cents,
+      p_currency: intent.currency,
+      p_spend_less_than_each_cents: intent.spend_less_than_each_cents,
+      p_quote_confirmed_at: new Date().toISOString(),
     });
     if (error?.code === "23505") {
       throw new ApiError(409, "A sample ID in this order already exists in the laboratory", "sample_id_conflict", {

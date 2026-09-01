@@ -1350,6 +1350,54 @@ export type Database = {
           },
         ]
       }
+      testing_request_drafts: {
+        Row: {
+          converted_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          lab_id: string
+          request_payload: Json
+          status: string
+          test_order_id: string | null
+        }
+        Insert: {
+          converted_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          lab_id: string
+          request_payload: Json
+          status?: string
+          test_order_id?: string | null
+        }
+        Update: {
+          converted_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          lab_id?: string
+          request_payload?: Json
+          status?: string
+          test_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "testing_request_drafts_lab_id_fkey"
+            columns: ["lab_id"]
+            isOneToOne: false
+            referencedRelation: "laboratories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "testing_request_drafts_test_order_id_fkey"
+            columns: ["test_order_id"]
+            isOneToOne: true
+            referencedRelation: "test_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1385,10 +1433,21 @@ export type Database = {
         Args: { p_idempotency_key?: string; p_payload: Json }
         Returns: string
       }
-      create_testing_request: {
-        Args: { p_idempotency_key: string; p_payload: Json }
+      confirm_testing_request_draft: {
+        Args: {
+          p_catalog_item: string
+          p_catalog_version: string
+          p_currency: string
+          p_draft_id: string
+          p_idempotency_key: string
+          p_quote_confirmed_at: string
+          p_spend_less_than_each_cents: number | null
+          p_total_price_cents: number
+          p_unit_price_cents: number
+        }
         Returns: Json
       }
+      create_testing_request_draft: { Args: { p_payload: Json }; Returns: string }
       get_user_dashboard_summary: {
         Args: Record<PropertyKey, never>
         Returns: Json

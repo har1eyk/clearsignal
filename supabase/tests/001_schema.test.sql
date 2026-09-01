@@ -1,10 +1,11 @@
 begin;
-select plan(31);
+select plan(33);
 
 select has_table('public', 'laboratories', 'laboratories exists');
 select has_table('public', 'lab_memberships', 'lab memberships exist');
 select has_table('public', 'samples', 'samples exist');
 select has_table('public', 'test_orders', 'testing requests exist');
+select has_table('public', 'testing_request_drafts', 'unpriced testing request drafts exist');
 select has_table('public', 'sample_events', 'sample custody events exist');
 select has_table('public', 'method_versions', 'method versions exist');
 select has_table('public', 'assay_runs', 'assay runs exist');
@@ -16,7 +17,8 @@ select has_table('public', 'review_actions', 'review actions exist');
 select has_table('public', 'audit_events', 'audit trail exists');
 
 select has_function('public', 'create_sample', array['jsonb','text'], 'sample mutation RPC exists');
-select has_function('public', 'create_testing_request', array['jsonb','text'], 'testing-request mutation RPC exists');
+select has_function('public', 'create_testing_request_draft', array['jsonb'], 'unpriced draft RPC exists');
+select has_function('public', 'confirm_testing_request_draft', array['uuid','text','text','text','integer','integer','text','integer','timestamp with time zone'], 'atomic priced confirmation RPC exists');
 select has_function('public', 'get_user_dashboard_summary', array[]::text[], 'dashboard summary RPC exists');
 select has_function('public', 'set_sample_specification', array['uuid','numeric','numeric','text'], 'sample specification RPC exists');
 select has_function('public', 'complete_sample_review', array['uuid','numeric','numeric','text','text'], 'matrix and specification review RPC exists');
