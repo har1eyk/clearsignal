@@ -21,6 +21,14 @@ test("accepts a testing request with structured sample details", () => {
   assert.equal(result.success, true);
 });
 
+test("allows matrix to remain pending during request intake", () => {
+  const result = testingRequestCreateSchema.safeParse({
+    ...validRequest,
+    samples: [{ ...validRequest.samples[0], matrix: null }],
+  });
+  assert.equal(result.success, true);
+});
+
 test("requires request context and at least one sample", () => {
   const result = testingRequestCreateSchema.safeParse({ ...validRequest, project_name: "", purpose: "", samples: [] });
   assert.equal(result.success, false);

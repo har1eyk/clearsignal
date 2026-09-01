@@ -64,6 +64,10 @@ service-role key is required by the application.
 
 - Admins create and activate SOP/method versions, instruments, calibration
   events, reagent lots, and control-standard lots.
+- Browser agents can invoke one authenticated `order_endotoxin_tests` WebMCP
+  tool. ClearSignal prices the fixed catalog service, enforces the strict
+  per-test limit, requests one visible confirmation, and submits with a signed,
+  idempotent order intent.
 - Analysts register and receive samples, recording every custody event.
 - Endpoint RFU can be entered as JSON or imported using
   [the canonical CSV template](docs/rfc-endpoint-template.csv).

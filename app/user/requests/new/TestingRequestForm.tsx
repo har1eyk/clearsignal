@@ -5,7 +5,7 @@ import type { FormEvent, ReactNode } from "react";
 import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
-import { createTestingRequest, type CreatedTestingRequest, type TestingRequestPayload } from "@/lib/lab/testing-request-client";
+import { createTestingRequest, type CreatedTestingRequest } from "@/lib/lab/testing-request-client";
 import { testingRequestCreateSchema } from "@/lib/lab/validation";
 import { TestingRequestShader } from "./TestingRequestShader";
 import { TestingRequestWebMCP } from "./TestingRequestWebMCP";
@@ -142,7 +142,7 @@ export function TestingRequestForm() {
         kind: sample.kind,
         product_name: optional(sample.product_name),
         product_lot: optional(sample.product_lot),
-        matrix: sample.matrix,
+        matrix: optional(sample.matrix),
         process_stage: optional(sample.process_stage),
         collected_at: sample.collected_at ? new Date(sample.collected_at).toISOString() : null,
         collected_by: optional(sample.collected_by),
@@ -174,39 +174,6 @@ export function TestingRequestForm() {
     });
     return null;
   }
-
-  const prepareFromWebMCP = useCallback((prepared: TestingRequestPayload) => {
-    const localTimestamp = (value: string | null | undefined) => {
-      if (!value) return "";
-      const date = new Date(value);
-      const offset = date.getTimezoneOffset() * 60_000;
-      return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-    };
-    setClientName(prepared.client_name ?? "");
-    setProjectName(prepared.project_name);
-    setPurpose(prepared.purpose);
-    setSamples(prepared.samples.map((sample, index) => ({
-      key: `webmcp-sample-${nextSampleKey.current + index}`,
-      external_id: sample.external_id,
-      kind: sample.kind,
-      product_name: sample.product_name ?? "",
-      product_lot: sample.product_lot ?? "",
-      matrix: sample.matrix,
-      process_stage: sample.process_stage ?? "",
-      collected_at: localTimestamp(sample.collected_at),
-      collected_by: sample.collected_by ?? "",
-      storage_condition: sample.storage_condition ?? "",
-      quantity: sample.quantity == null ? "" : String(sample.quantity),
-      quantity_unit: sample.quantity_unit ?? "",
-    })));
-    nextSampleKey.current += prepared.samples.length;
-    setErrors({});
-    setSubmitError("");
-    setCreated(null);
-    setDirty(true);
-    idempotencyKey.current = null;
-    requestAnimationFrame(() => document.getElementById("review-request")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, []);
 
   const createdFromWebMCP = useCallback((result: CreatedTestingRequest) => {
     setCreated(result);
@@ -265,13 +232,15 @@ export function TestingRequestForm() {
           <dl>
             <div><dt>Request number</dt><dd>{created.order_number}</dd></div>
             <div><dt>Samples submitted</dt><dd>{created.sample_count}</dd></div>
+            {created.unit_price != null && created.currency && <div><dt>Price per test</dt><dd>{new Intl.NumberFormat("en-US", { style: "currency", currency: created.currency }).format(created.unit_price)}</dd></div>}
+            {created.total != null && created.currency && <div><dt>Order total</dt><dd>{new Intl.NumberFormat("en-US", { style: "currency", currency: created.currency }).format(created.total)}</dd></div>}
             <div><dt>Status</dt><dd>Pending laboratory review</dd></div>
           </dl>
           <Link className="button button-amber" href="/user">Return to workspace <span aria-hidden="true">→</span></Link>
         </section>
       ) : membership && session ? (
         <>
-          <TestingRequestWebMCP accessToken={session.access_token} labId={membership.laboratory.id} onPrepare={prepareFromWebMCP} onCreated={createdFromWebMCP} />
+          <TestingRequestWebMCP accessToken={session.access_token} laboratory={membership.laboratory.name} onCreated={createdFromWebMCP} />
           <header className="request-hero shell">
             <div>
               <p className="eyebrow light">NEW TESTING REQUEST</p>
@@ -330,7 +299,7 @@ export function TestingRequestForm() {
                         <Field label="Sample type" name={`samples.${index}.kind`} error={errors[`samples.${index}.kind`]}>
                           <select name={`samples.${index}.kind`} value={sample.kind} onChange={(event) => updateSample(index, "kind", event.target.value)}><option value="original">Original</option><option value="aliquot">Aliquot</option><option value="pool">Pool</option></select>
                         </Field>
-                        <Field label="Matrix" required name={`samples.${index}.matrix`} error={errors[`samples.${index}.matrix`]}>
+                        <Field label="Matrix" hint="Optional at intake; required before testing" name={`samples.${index}.matrix`} error={errors[`samples.${index}.matrix`]}>
                           <input name={`samples.${index}.matrix`} value={sample.matrix} maxLength={240} aria-invalid={Boolean(errors[`samples.${index}.matrix`])} onChange={(event) => updateSample(index, "matrix", event.target.value)} placeholder="e.g. Protein solution" />
                         </Field>
                         <Field label="Product name" name={`samples.${index}.product_name`} error={errors[`samples.${index}.product_name`]}>

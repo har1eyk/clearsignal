@@ -39,3 +39,12 @@
 .science-confetti{position:fixed;inset:0;width:100vw;height:100vh;z-index:3;pointer-events:none}
 .request-page .request-nav{position:relative;z-index:4}
 .request-confirmation>*:not(.science-confetti){position:relative;z-index:4}
+
+/* One-prompt WebMCP priced-order confirmation. */
+.order-confirmation-backdrop{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:rgba(8,22,32,.82);backdrop-filter:blur(12px)}
+.order-confirmation-dialog{width:min(100%,720px);max-height:calc(100vh - 48px);overflow:auto;background:var(--paper);color:var(--ink);padding:clamp(28px,5vw,56px);border:1px solid rgba(173,219,255,.45);box-shadow:0 30px 90px rgba(0,0,0,.42)}
+.order-confirmation-dialog h2{font-size:clamp(38px,5vw,62px);margin-bottom:20px}.order-confirmation-dialog>p:not(.eyebrow){color:#506674;line-height:1.6}
+.order-confirmation-dialog dl{margin:34px 0 0;border-top:1px solid var(--line)}.order-confirmation-dialog dl div{display:grid;grid-template-columns:180px 1fr;gap:24px;padding:16px 0;border-bottom:1px solid var(--line)}
+.order-confirmation-dialog dt{color:var(--blue);font-size:9px;letter-spacing:.14em;text-transform:uppercase}.order-confirmation-dialog dd{margin:0;font-size:13px;text-align:right;overflow-wrap:anywhere}
+.order-confirmation-note{margin:24px 0 0!important;font-size:10px}.order-confirmation-actions{display:flex;justify-content:flex-end;gap:14px;margin-top:32px}.order-confirmation-actions .button-cream{border-color:var(--line)}
+@media(max-width:600px){.order-confirmation-dialog dl div{grid-template-columns:1fr;gap:7px}.order-confirmation-dialog dd{text-align:left}.order-confirmation-actions{align-items:stretch;flex-direction:column-reverse}.order-confirmation-actions .button{width:100%}}

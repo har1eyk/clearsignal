@@ -10,14 +10,15 @@ export async function PATCH(request: Request, route: RouteContext) {
     requireRole(context, ["admin", "analyst"]);
     const { id } = await route.params;
     const payload = sampleSpecificationSchema.parse(await parseJson(request));
-    const { data, error } = await context.supabase.rpc("set_sample_specification", {
+    const { data, error } = await context.supabase.rpc("complete_sample_review", {
       p_sample_id: id,
       p_endotoxin_limit_eu_ml: payload.endotoxin_limit_eu_ml,
       p_maximum_valid_dilution: payload.maximum_valid_dilution,
       p_reason: payload.reason,
+      p_matrix: payload.matrix,
     });
     if (error) throw error;
-    return ok({ id: rpcValue<string>(data), specification_status: "complete" }, context.requestId);
+    return ok({ id: rpcValue<string>(data), matrix_status: "complete", specification_status: "complete" }, context.requestId);
   } catch (error) {
     return failure(error, requestId);
   }

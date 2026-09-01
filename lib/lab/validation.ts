@@ -8,7 +8,7 @@ const testingRequestSampleSchema = z.object({
   kind: z.enum(["original", "aliquot", "pool"]).default("original"),
   product_name: z.string().trim().max(240).optional().nullable(),
   product_lot: z.string().trim().max(120).optional().nullable(),
-  matrix: z.string().trim().min(1, "Matrix is required").max(240),
+  matrix: z.string().trim().max(240).optional().nullable(),
   process_stage: z.string().trim().max(160).optional().nullable(),
   collected_at: z.string().datetime({ offset: true }).optional().nullable(),
   collected_by: z.string().trim().max(160).optional().nullable(),
@@ -42,6 +42,7 @@ export const testingRequestCreateSchema = z.object({
 });
 
 export const sampleSpecificationSchema = z.object({
+  matrix: z.string().trim().min(1).max(240).optional(),
   endotoxin_limit_eu_ml: z.number().nonnegative(),
   maximum_valid_dilution: z.number().min(1),
   reason: z.string().trim().min(1).max(1000),

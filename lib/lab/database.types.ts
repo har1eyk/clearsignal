@@ -1145,7 +1145,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["sample_kind"]
           lab_id: string
-          matrix: string
+          matrix: string | null
           maximum_valid_dilution: number | null
           process_stage: string | null
           product_lot: string | null
@@ -1171,7 +1171,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["sample_kind"]
           lab_id: string
-          matrix: string
+          matrix?: string | null
           maximum_valid_dilution?: number | null
           process_stage?: string | null
           product_lot?: string | null
@@ -1197,7 +1197,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["sample_kind"]
           lab_id?: string
-          matrix?: string
+          matrix?: string | null
           maximum_valid_dilution?: number | null
           process_stage?: string | null
           product_lot?: string | null
@@ -1284,40 +1284,61 @@ export type Database = {
       }
       test_orders: {
         Row: {
+          catalog_item: string
+          catalog_version: string
           client_name: string | null
           created_at: string
           created_by: string
+          currency: string
           id: string
           idempotency_key: string | null
           lab_id: string
           order_number: string
           project_name: string | null
           purpose: string | null
+          quote_confirmed_at: string | null
           requested_at: string
+          spend_less_than_each_cents: number | null
+          total_price_cents: number
+          unit_price_cents: number
         }
         Insert: {
+          catalog_item?: string
+          catalog_version?: string
           client_name?: string | null
           created_at?: string
           created_by: string
+          currency?: string
           id?: string
           idempotency_key?: string | null
           lab_id: string
           order_number: string
           project_name?: string | null
           purpose?: string | null
+          quote_confirmed_at?: string | null
           requested_at?: string
+          spend_less_than_each_cents?: number | null
+          total_price_cents?: number
+          unit_price_cents?: number
         }
         Update: {
+          catalog_item?: string
+          catalog_version?: string
           client_name?: string | null
           created_at?: string
           created_by?: string
+          currency?: string
           id?: string
           idempotency_key?: string | null
           lab_id?: string
           order_number?: string
           project_name?: string | null
           purpose?: string | null
+          quote_confirmed_at?: string | null
           requested_at?: string
+          spend_less_than_each_cents?: number | null
+          total_price_cents?: number
+          unit_price_cents?: number
         }
         Relationships: [
           {
@@ -1341,6 +1362,16 @@ export type Database = {
       build_run_report: { Args: { p_run_id: string }; Returns: Json }
       calculate_assay_run: {
         Args: { p_idempotency_key?: string; p_run_id: string }
+        Returns: string
+      }
+      complete_sample_review: {
+        Args: {
+          p_endotoxin_limit_eu_ml: number
+          p_matrix?: string
+          p_maximum_valid_dilution: number
+          p_reason: string
+          p_sample_id: string
+        }
         Returns: string
       }
       create_assay_run: {

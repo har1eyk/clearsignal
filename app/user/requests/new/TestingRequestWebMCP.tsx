@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { createTestingRequest, TestingRequestClientError, type CreatedTestingRequest, type TestingRequestPayload } from "@/lib/lab/testing-request-client";
-import { testingRequestCreateSchema } from "@/lib/lab/validation";
+import { confirmEndotoxinOrder, previewEndotoxinOrder } from "@/lib/lab/endotoxin-order-client";
+import { endotoxinOrderInputSchema, orderFingerprint, type EndotoxinOrderPreview } from "@/lib/lab/endotoxin-order";
+import { TestingRequestClientError, type CreatedTestingRequest } from "@/lib/lab/testing-request-client";
 
 type ToolAnnotations = {
   readOnlyHint?: boolean;
@@ -18,7 +19,7 @@ type WebMCPTool = {
   description: string;
   inputSchema: Record<string, unknown>;
   annotations?: ToolAnnotations;
-  execute: (input: Record<string, unknown>) => unknown | Promise<unknown>;
+  execute: (input: Record<string, unknown>, options?: { signal?: AbortSignal }) => unknown | Promise<unknown>;
 };
 
 type WebMCPDocument = Document & {
@@ -27,141 +28,210 @@ type WebMCPDocument = Document & {
   };
 };
 
-const sampleProperties = {
-  external_id: { type: "string", description: "Laboratory-unique sample identifier.", minLength: 1, maxLength: 120 },
-  kind: { type: "string", enum: ["original", "aliquot", "pool"], default: "original" },
-  product_name: { type: "string", maxLength: 240 },
-  product_lot: { type: "string", maxLength: 120 },
-  matrix: { type: "string", description: "Physical or product matrix, such as protein solution or water.", minLength: 1, maxLength: 240 },
-  process_stage: { type: "string", maxLength: 160 },
-  collected_at: { type: "string", format: "date-time", description: "ISO 8601 collection timestamp with timezone offset." },
-  collected_by: { type: "string", maxLength: 160 },
-  storage_condition: { type: "string", maxLength: 240 },
-  quantity: { type: "number", minimum: 0 },
-  quantity_unit: { type: "string", enum: ["mL", "µL", "g", "mg", "units"] },
+type ConfirmationState = {
+  preview: EndotoxinOrderPreview;
+  resolve: (approved: boolean) => void;
 };
 
-const requestProperties = {
-  client_name: { type: "string", description: "Optional client or organization name.", maxLength: 240 },
-  project_name: { type: "string", minLength: 1, maxLength: 240 },
-  purpose: { type: "string", minLength: 1, maxLength: 2000 },
-  samples: {
-    type: "array",
-    minItems: 1,
-    maxItems: 100,
-    items: {
-      type: "object",
-      properties: sampleProperties,
-      required: ["external_id", "matrix"],
-      additionalProperties: false,
-    },
-  },
-};
-
-function json(value: unknown) {
-  return JSON.stringify(value, null, 2);
-}
-
-function parsedPayload(labId: string, input: Record<string, unknown>): TestingRequestPayload {
-  const request = { ...input };
-  delete request.submission_key;
-  return testingRequestCreateSchema.parse({ lab_id: labId, ...request });
-}
+const PENDING_ORDER_KEY = "clearsignal.webmcp.pending-order";
 
 function failure(error: unknown) {
   if (error instanceof TestingRequestClientError) {
-    return json({ ok: false, error: { code: error.code, message: error.message, details: error.details } });
+    return { ok: false, error: { code: error.code, message: error.message, details: error.details } };
   }
   if (error instanceof z.ZodError) {
-    return json({
+    return {
       ok: false,
       error: {
         code: "validation_failed",
-        message: "Testing request validation failed",
-        details: { issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })) },
+        message: "The order instruction is invalid.",
+        details: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
       },
-    });
+    };
   }
-  return json({ ok: false, error: { code: "request_failed", message: error instanceof Error ? error.message : "Request failed" } });
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return { ok: false, error: { code: "cancelled", message: "The order operation was cancelled." } };
+  }
+  return { ok: false, error: { code: "request_failed", message: error instanceof Error ? error.message : "The order failed." } };
+}
+
+function readCachedPreview(fingerprint: string): EndotoxinOrderPreview | null {
+  try {
+    const stored = sessionStorage.getItem(PENDING_ORDER_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as { fingerprint?: string; preview?: EndotoxinOrderPreview };
+    if (parsed.fingerprint !== fingerprint || !parsed.preview || Date.parse(parsed.preview.expires_at) <= Date.now()) {
+      sessionStorage.removeItem(PENDING_ORDER_KEY);
+      return null;
+    }
+    return parsed.preview;
+  } catch {
+    sessionStorage.removeItem(PENDING_ORDER_KEY);
+    return null;
+  }
+}
+
+function cachePreview(fingerprint: string, preview: EndotoxinOrderPreview) {
+  sessionStorage.setItem(PENDING_ORDER_KEY, JSON.stringify({ fingerprint, preview }));
+}
+
+function clearCachedPreview() {
+  sessionStorage.removeItem(PENDING_ORDER_KEY);
+}
+
+function money(value: number, currency: string) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(value);
 }
 
 export function TestingRequestWebMCP({
   accessToken,
-  labId,
-  onPrepare,
+  laboratory,
   onCreated,
 }: {
   accessToken: string;
-  labId: string;
-  onPrepare: (payload: TestingRequestPayload) => void;
+  laboratory: string;
   onCreated: (created: CreatedTestingRequest) => void;
 }) {
+  const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
+  const confirmationRef = useRef<ConfirmationState | null>(null);
+  const approveButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const settleConfirmation = useCallback((approved: boolean) => {
+    const pending = confirmationRef.current;
+    if (!pending) return;
+    confirmationRef.current = null;
+    setConfirmation(null);
+    pending.resolve(approved);
+  }, []);
+
+  const requestConfirmation = useCallback((preview: EndotoxinOrderPreview, signal?: AbortSignal) => {
+    if (confirmationRef.current) return Promise.reject(new Error("Another order confirmation is already open."));
+    return new Promise<boolean>((resolve) => {
+      const pending = { preview, resolve };
+      confirmationRef.current = pending;
+      setConfirmation(pending);
+      signal?.addEventListener("abort", () => settleConfirmation(false), { once: true });
+    });
+  }, [settleConfirmation]);
+
+  useEffect(() => () => {
+    if (confirmationRef.current) confirmationRef.current.resolve(false);
+    confirmationRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (confirmation) approveButtonRef.current?.focus();
+  }, [confirmation]);
+
+  useEffect(() => {
+    if (!confirmation) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") settleConfirmation(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [confirmation, settleConfirmation]);
+
   useEffect(() => {
     const modelContext = (document as WebMCPDocument).modelContext;
     if (!modelContext?.registerTool) return;
     const controller = new AbortController();
 
-    const tools: WebMCPTool[] = [
-      {
-        name: "get_testing_request_requirements",
-        description: "Return the fields and workflow requirements for a ClearSignal endotoxin testing request. This does not change or submit the form.",
-        inputSchema: { type: "object", properties: {}, additionalProperties: false },
-        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false, untrustedContentHint: false },
-        execute: () => json({
-          request: { required: ["project_name", "purpose", "samples"], optional: ["client_name"] },
-          sample: { required: ["external_id", "matrix"], optional: ["kind", "product_name", "product_lot", "process_stage", "collected_at", "collected_by", "storage_condition", "quantity", "quantity_unit"] },
-          sampleKinds: ["original", "aliquot", "pool"],
-          quantityUnits: ["mL", "µL", "g", "mg", "units"],
-          constraints: ["At least one sample is required.", "Sample IDs must be unique within the laboratory.", "Quantity and quantity unit must be supplied together."],
-          workflow: "The laboratory assigns the endotoxin limit and maximum valid dilution after request submission and before assay execution.",
-        }),
-      },
-      {
-        name: "prepare_testing_request",
-        description: "Validate and place a multi-sample endotoxin testing request into the visible form for review. This does not submit or create any records.",
-        inputSchema: { type: "object", properties: requestProperties, required: ["project_name", "purpose", "samples"], additionalProperties: false },
-        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false, untrustedContentHint: false },
-        execute: (input) => {
-          try {
-            const payload = parsedPayload(labId, input);
-            onPrepare(payload);
-            return json({ ok: true, prepared: true, sample_count: payload.samples.length, message: "The visible form is prepared for review; no request has been submitted." });
-          } catch (error) {
-            return failure(error);
-          }
-        },
-      },
-      {
-        name: "submit_testing_request",
-        description: "Create an authenticated multi-sample endotoxin testing request immediately. This is an external side effect and must only be called after the user confirms the exact request and samples at action time.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            ...requestProperties,
-            submission_key: { type: "string", description: "Stable unique key for this intended submission; reuse it for retries.", minLength: 8, maxLength: 160 },
+    const tool: WebMCPTool = {
+      name: "order_endotoxin_tests",
+      description: "Price and order the standard endotoxin test for sample IDs. ClearSignal enforces the strict per-test limit, shows one confirmation, then creates the order.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          sample_ids: {
+            type: "array",
+            minItems: 1,
+            maxItems: 100,
+            items: { type: "string", minLength: 1, maxLength: 120 },
+            description: "Laboratory-unique sample IDs to test.",
           },
-          required: ["project_name", "purpose", "samples", "submission_key"],
-          additionalProperties: false,
+          spend_less_than_each: {
+            type: "number",
+            exclusiveMinimum: 0,
+            description: "The unit price must be strictly below this amount.",
+          },
+          currency: { type: "string", enum: ["USD"], default: "USD" },
         },
-        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false, untrustedContentHint: false },
-        execute: async (input) => {
-          try {
-            const payload = parsedPayload(labId, input);
-            const created = await createTestingRequest({ accessToken, payload, submissionKey: String(input.submission_key ?? "") });
-            onCreated(created);
-            return json({ ok: true, request: { ...created, status: "pending_laboratory_review" } });
-          } catch (error) {
-            return failure(error);
-          }
-        },
+        required: ["sample_ids", "spend_less_than_each"],
+        additionalProperties: false,
       },
-    ];
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+        untrustedContentHint: true,
+      },
+      execute: async (rawInput, options) => {
+        try {
+          const input = endotoxinOrderInputSchema.parse(rawInput);
+          const fingerprint = orderFingerprint(input);
+          let preview = readCachedPreview(fingerprint);
+          if (!preview) {
+            preview = await previewEndotoxinOrder({ accessToken, input, signal: options?.signal });
+            cachePreview(fingerprint, preview);
+          }
 
-    Promise.all(tools.map((tool) => modelContext.registerTool(tool, { signal: controller.signal }))).catch((error: unknown) => {
-      if (!controller.signal.aborted) console.warn("ClearSignal testing-request tools could not be registered.", error);
+          const approved = await requestConfirmation(preview, options?.signal);
+          if (!approved) {
+            clearCachedPreview();
+            return { ok: false, error: { code: "confirmation_declined", message: "The user declined the priced order." } };
+          }
+
+          const created = await confirmEndotoxinOrder({ accessToken, intent: preview.intent, signal: options?.signal });
+          clearCachedPreview();
+          onCreated(created);
+          return {
+            ok: true,
+            order_number: created.order_number,
+            sample_count: created.sample_count,
+            unit_price: created.unit_price,
+            total: created.total,
+            currency: created.currency,
+            status: created.status,
+          };
+        } catch (error) {
+          if (error instanceof TestingRequestClientError && ["price_intent_expired", "catalog_changed", "invalid_price_intent"].includes(error.code)) {
+            clearCachedPreview();
+          }
+          return failure(error);
+        }
+      },
+    };
+
+    modelContext.registerTool(tool, { signal: controller.signal }).catch((error: unknown) => {
+      if (!controller.signal.aborted) console.warn("ClearSignal ordering tool could not be registered.", error);
     });
     return () => controller.abort();
-  }, [accessToken, labId, onCreated, onPrepare]);
+  }, [accessToken, onCreated, requestConfirmation]);
 
-  return null;
+  if (!confirmation) return null;
+  const { preview } = confirmation;
+  return (
+    <div className="order-confirmation-backdrop" role="presentation">
+      <section className="order-confirmation-dialog" role="dialog" aria-modal="true" aria-labelledby="order-confirmation-title" aria-describedby="order-confirmation-description">
+        <p className="eyebrow">PRICED ORDER</p>
+        <h2 id="order-confirmation-title">Confirm this endotoxin order.</h2>
+        <p id="order-confirmation-description">ClearSignal verified that the unit price is strictly below your limit. No order exists until you approve.</p>
+        <dl>
+          <div><dt>Laboratory</dt><dd>{preview.laboratory || laboratory}</dd></div>
+          <div><dt>Service</dt><dd>{preview.service}</dd></div>
+          <div><dt>Samples</dt><dd>{preview.sample_ids.join(" / ")}</dd></div>
+          <div><dt>Price per test</dt><dd>{money(preview.unit_price, preview.currency)}</dd></div>
+          <div><dt>Strict limit</dt><dd>Less than {money(preview.spend_less_than_each, preview.currency)}</dd></div>
+          <div><dt>Order total</dt><dd>{money(preview.total, preview.currency)}</dd></div>
+        </dl>
+        <p className="order-confirmation-note">Sample matrix and assay specifications may be completed during laboratory review before testing starts.</p>
+        <div className="order-confirmation-actions">
+          <button type="button" className="button button-cream" onClick={() => settleConfirmation(false)}>Cancel</button>
+          <button ref={approveButtonRef} type="button" className="button button-amber" onClick={() => settleConfirmation(true)}>Confirm &amp; order <span aria-hidden="true">→</span></button>
+        </div>
+      </section>
+    </div>
+  );
 }

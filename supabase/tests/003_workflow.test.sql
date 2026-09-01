@@ -1,5 +1,5 @@
 begin;
-select plan(13);
+select plan(19);
 
 insert into auth.users(
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -40,8 +40,23 @@ select lives_ok(
   'sample is registered'
 );
 select lives_ok(
-  $$select public.create_testing_request('{"lab_id":"21000000-0000-4000-8000-000000000001","project_name":"Pending specifications","purpose":"In-process testing","samples":[{"external_id":"RFC-PENDING-1","kind":"original","matrix":"biologic"}]}'::jsonb,'workflow-request-0001')$$,
-  'testing request registers a sample without laboratory specifications'
+  $$select public.create_testing_request('{"lab_id":"21000000-0000-4000-8000-000000000001","project_name":"Pending specifications","purpose":"In-process testing","samples":[{"external_id":"RFC-PENDING-1","kind":"original","matrix":null}],"catalog_item":"standard_endotoxin_test","catalog_version":"2026-09-01","unit_price_cents":35000,"total_price_cents":35000,"currency":"USD","spend_less_than_each_cents":40000,"quote_confirmed_at":"2026-09-01T16:00:00Z"}'::jsonb,'workflow-request-0001')$$,
+  'priced testing request registers a sample with matrix pending'
+);
+select results_eq(
+  $$select unit_price_cents = 35000 and total_price_cents = 35000 and spend_less_than_each_cents = 40000 and quote_confirmed_at is not null from public.test_orders where idempotency_key='workflow-request-0001'$$,
+  array[true], 'confirmed catalog pricing is retained on the order'
+);
+select results_eq(
+  $$select count(*) from public.samples where external_id='RFC-PENDING-1' and matrix is null$$,
+  array[1::bigint], 'retrying the same priced order keeps one sample record'
+) from public.create_testing_request(
+  '{"lab_id":"21000000-0000-4000-8000-000000000001","project_name":"Pending specifications","purpose":"In-process testing","samples":[{"external_id":"RFC-PENDING-1","kind":"original","matrix":null}],"unit_price_cents":35000,"total_price_cents":35000,"spend_less_than_each_cents":40000}'::jsonb,
+  'workflow-request-0001'
+);
+select throws_ok(
+  $$select public.create_testing_request('{"lab_id":"21000000-0000-4000-8000-000000000001","project_name":"At cap","purpose":"Strict price test","samples":[{"external_id":"RFC-AT-CAP","kind":"original","matrix":null}],"spend_less_than_each_cents":35000}'::jsonb,'workflow-request-at-cap')$$,
+  'P0001', 'price cap exceeded', 'a unit price equal to the strict limit is rejected'
 );
 select throws_ok(
   $$select public.create_assay_run(jsonb_build_object(
@@ -58,6 +73,26 @@ select throws_ok(
 select lives_ok(
   $$select public.set_sample_specification((select id from public.samples where external_id='RFC-PENDING-1'),2,4,'Laboratory review complete')$$,
   'analyst assigns the pending laboratory specification'
+);
+select throws_ok(
+  $$select public.create_assay_run(jsonb_build_object(
+    'lab_id','21000000-0000-4000-8000-000000000001','run_number','RFC-RUN-MATRIX-PENDING',
+    'method_version_id','41000000-0000-4000-8000-000000000001',
+    'instrument_id','51000000-0000-4000-8000-000000000001',
+    'reagent_lot_id','61000000-0000-4000-8000-000000000001',
+    'standard_lot_id','61000000-0000-4000-8000-000000000002','plate_format',96,
+    'samples',jsonb_build_array(jsonb_build_object('sample_id',(select id from public.samples where external_id='RFC-PENDING-1'),'planned_dilution',2))
+  ),'workflow-run-matrix-pending-0001')$$,
+  'P0001', 'sample is missing matrix or endotoxin specification',
+  'a sample with pending matrix cannot enter an assay run'
+);
+select lives_ok(
+  $$select public.complete_sample_review((select id from public.samples where external_id='RFC-PENDING-1'),2,4,'Matrix and specification review complete','biologic')$$,
+  'laboratory review completes the pending matrix and specifications together'
+);
+select results_eq(
+  $$select matrix from public.samples where external_id='RFC-PENDING-1'$$,
+  array['biologic'::text], 'reviewed sample retains its confirmed matrix'
 );
 select lives_ok(
   $$select public.create_assay_run(jsonb_build_object(

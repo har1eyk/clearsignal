@@ -20,6 +20,8 @@ test("server-renders the ClearSignal marketing page", async () => {
     executionContext,
   );
   assert.equal(response.status, 200);
+  assert.equal(response.headers.get("origin-agent-cluster"), "?1");
+  assert.equal(response.headers.get("permissions-policy"), "tools=(self)");
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>ClearSignal\.bio \| Fast Endotoxin Testing<\/title>/i);
@@ -31,9 +33,9 @@ test("server-renders the ClearSignal marketing page", async () => {
 
 test("laboratory endpoints reject unauthenticated requests consistently", async () => {
   const app = await worker();
-  for (const path of ["/api/lab/me", "/api/lab/dashboard-summary"]) {
+  for (const path of ["/api/lab/me", "/api/lab/dashboard-summary", "/api/lab/endotoxin-orders/preview", "/api/lab/endotoxin-orders/confirm"]) {
     const response = await app.fetch(
-      new Request(`http://localhost${path}`, { headers: { accept: "application/json" } }),
+      new Request(`http://localhost${path}`, { method: path.includes("endotoxin-orders") ? "POST" : "GET", headers: { accept: "application/json" } }),
       environment,
       executionContext,
     );
