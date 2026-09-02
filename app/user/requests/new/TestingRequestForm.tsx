@@ -9,10 +9,9 @@ import { type CreatedTestingRequest } from "@/lib/lab/testing-request-client";
 import { confirmEndotoxinOrder, previewTestingRequestOrder } from "@/lib/lab/endotoxin-order-client";
 import { STANDARD_ENDOTOXIN_TEST, centsToDollars, type EndotoxinOrderPreview } from "@/lib/lab/endotoxin-order";
 import { testingRequestCreateSchema } from "@/lib/lab/validation";
+import { TestingRequestPriceConfirmation } from "../../../TestingRequestPriceConfirmation";
 import { TestingRequestShader } from "./TestingRequestShader";
-import { TestingRequestWebMCP } from "./TestingRequestWebMCP";
 import { ScienceConfetti } from "./ScienceConfetti";
-import { TestingRequestPriceConfirmation } from "./TestingRequestPriceConfirmation";
 
 type Membership = {
   user: { display_name: string | null; email: string | null };
@@ -182,7 +181,7 @@ export function TestingRequestForm() {
     return null;
   }
 
-  const createdFromWebMCP = useCallback((result: CreatedTestingRequest) => {
+  const handleCreated = useCallback((result: CreatedTestingRequest) => {
     setCreated(result);
     setDirty(false);
     setErrors({});
@@ -217,7 +216,7 @@ export function TestingRequestForm() {
     try {
       const result = await confirmEndotoxinOrder({ accessToken: session.access_token, intent: pricePreview.intent });
       setPricePreview(null);
-      createdFromWebMCP(result);
+      handleCreated(result);
     } catch (candidate) {
       setSubmitError(candidate instanceof Error ? candidate.message : "The priced testing request could not be submitted.");
       setPricePreview(null);
@@ -261,7 +260,6 @@ export function TestingRequestForm() {
         </section>
       ) : membership && session ? (
         <>
-          <TestingRequestWebMCP accessToken={session.access_token} labId={membership.laboratory.id} laboratory={membership.laboratory.name} onCreated={createdFromWebMCP} />
           {pricePreview && (
             <TestingRequestPriceConfirmation
               preview={pricePreview}

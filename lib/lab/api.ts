@@ -91,7 +91,7 @@ export function failure(error: unknown, requestId: string): Response {
   if (error instanceof ApiError) return Response.json({ data: null, error: { code: error.code, message: error.message, details: error.details ?? null }, requestId }, { status: error.status, headers: { "cache-control": "no-store" } });
   if (error instanceof ZodError) return Response.json({ data: null, error: { code: "validation_failed", message: "Request validation failed", details: error.flatten() }, requestId }, { status: 400, headers: { "cache-control": "no-store" } });
   const candidate = error as { code?: string; message?: string; details?: string };
-  const status = candidate?.code === "42501" ? 403 : candidate?.code === "23505" ? 409 : 500;
+  const status = candidate?.code === "42501" ? 403 : ["23505", "55000"].includes(candidate?.code ?? "") ? 409 : 500;
   const message = status === 500 ? "The laboratory backend could not complete the request" : candidate.message ?? "Request failed";
   if (status === 500) console.error("ClearSignal API error", { requestId, error });
   return Response.json({ data: null, error: { code: candidate?.code ?? "internal_error", message, details: status === 500 ? null : candidate.details ?? null }, requestId }, { status, headers: { "cache-control": "no-store" } });
@@ -113,4 +113,3 @@ export function rpcValue<T>(data: T | T[] | null): T {
   if (data === null || data === undefined) throw new ApiError(500, "Database function returned no value", "empty_database_result");
   return data;
 }
-

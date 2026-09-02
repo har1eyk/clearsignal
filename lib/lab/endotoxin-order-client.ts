@@ -86,13 +86,21 @@ export function previewEndotoxinOrder({
 export function confirmEndotoxinOrder({
   accessToken,
   intent,
+  notebookSession,
   signal,
   fetcher,
 }: {
   accessToken: string;
   intent: string;
+  notebookSession?: { sessionId: string; browserToken: string; operationId: string };
   signal?: AbortSignal;
   fetcher?: FetchLike;
 }) {
-  return apiCall<CreatedEndotoxinOrder>({ url: "/api/lab/endotoxin-orders/confirm", accessToken, body: { intent }, signal, fetcher });
+  return apiCall<CreatedEndotoxinOrder>({
+    url: "/api/lab/endotoxin-orders/confirm",
+    accessToken,
+    body: { intent, ...(notebookSession ? { notebook_session: notebookSession } : {}) },
+    signal,
+    fetcher,
+  });
 }

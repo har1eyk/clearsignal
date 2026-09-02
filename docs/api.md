@@ -32,8 +32,9 @@ The tool hides two authenticated server operations:
   the request. The intent carries the server-generated idempotency key, so an
   uncertain retry cannot duplicate the order.
 
-The current standard catalog price is $350 USD per sample. A request requiring
-the price to be less than $350 fails; a limit above $350 passes. The visible
+The standard catalog item is sourced from `lib/lab/endotoxin-order.ts`; catalog
+version `2026-09-01` is $375 USD per sample. A request requiring the price to be
+less than $375 fails; a limit above $375 passes. The visible
 site confirmation shows the exact samples, unit price, total, and limit before
 the confirmation operation is called.
 

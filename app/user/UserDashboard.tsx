@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
+import { ORDER_CREATED_EVENT } from "@/lib/lab/webmcp-order-state";
 
 type Membership = { user: { display_name: string | null; email: string | null }; laboratory: { name: string }; role: string };
 type DashboardSummary = { testingRequests: number; samplesInProgress: number; approvedResults: number };
@@ -80,8 +81,13 @@ export function UserDashboard() {
   useEffect(() => {
     if (!accessToken || !membership) return;
     const refreshOnFocus = () => { void refreshSummary(accessToken); };
+    const refreshAfterOrder = () => { void refreshSummary(accessToken); };
     window.addEventListener("focus", refreshOnFocus);
-    return () => window.removeEventListener("focus", refreshOnFocus);
+    window.addEventListener(ORDER_CREATED_EVENT, refreshAfterOrder);
+    return () => {
+      window.removeEventListener("focus", refreshOnFocus);
+      window.removeEventListener(ORDER_CREATED_EVENT, refreshAfterOrder);
+    };
   }, [accessToken, membership, refreshSummary]);
 
   async function signOut() {

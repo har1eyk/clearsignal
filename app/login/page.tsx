@@ -1,7 +1,6 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import type { Metadata } from "next";
 import { AuthPanel } from "./AuthPanel";
-import { AuthWebMCP } from "../AuthWebMCP";
 
 export const metadata: Metadata = {
   title: "Sign in | ClearSignal",
@@ -11,7 +10,6 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <main className="auth-shell" data-webmcp-enabled="true">
-      <AuthWebMCP />
       <aside className="auth-story">
         <a className="wordmark" href="/" aria-label="ClearSignal home"><span>CS</span> CLEAR<span className="mark">SIGNAL</span></a>
         <div>

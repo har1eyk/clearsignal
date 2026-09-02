@@ -6,6 +6,7 @@ import type { EndotoxinOrderPreview } from "@/lib/lab/endotoxin-order";
 function money(value: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(value);
 }
+
 export function TestingRequestPriceConfirmation({
   preview,
   laboratory,

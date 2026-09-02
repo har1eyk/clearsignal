@@ -1,9 +1,17 @@
 import { ApiError, authorizeLabRequest, failure, ok, parseJson, requestIdFor, rpcValue } from "@/lib/lab/api";
 import { STANDARD_ENDOTOXIN_TEST, centsToDollars } from "@/lib/lab/endotoxin-order";
 import { verifyOrderIntent } from "@/lib/lab/order-intent";
+import { operationIdSchema, sessionIdSchema, sha256, tokenSchema } from "@/lib/lab/notebook-session";
 import { z } from "zod";
 
-const confirmationSchema = z.object({ intent: z.string().min(40).max(64_000) });
+const confirmationSchema = z.object({
+  intent: z.string().min(40).max(64_000),
+  notebook_session: z.object({
+    sessionId: sessionIdSchema,
+    browserToken: tokenSchema,
+    operationId: operationIdSchema,
+  }).optional(),
+});
 type DatabaseOrder = {
   id: string;
   order_number: string;
@@ -17,7 +25,7 @@ export async function POST(request: Request) {
   const requestId = requestIdFor(request);
   try {
     const context = await authorizeLabRequest(request);
-    const { intent: token } = confirmationSchema.parse(await parseJson(request));
+    const { intent: token, notebook_session: notebookSession } = confirmationSchema.parse(await parseJson(request));
     const intent = await verifyOrderIntent(token);
 
     if (intent.user_id !== context.user.id || intent.lab_id !== context.labId) {
@@ -64,6 +72,15 @@ export async function POST(request: Request) {
     }
     if (error) throw error;
     const created = rpcValue<DatabaseOrder>(data);
+    if (notebookSession) {
+      const { error: notebookError } = await context.supabase.rpc("append_obsidian_order_event", {
+        p_session_id: notebookSession.sessionId,
+        p_browser_token_sha256: await sha256(notebookSession.browserToken),
+        p_operation_id: notebookSession.operationId,
+        p_test_order_id: created.id,
+      });
+      if (notebookError) throw notebookError;
+    }
     return ok({
       id: created.id,
       order_number: created.order_number,

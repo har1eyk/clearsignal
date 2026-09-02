@@ -13,7 +13,7 @@ const sampleId = z.string().trim().min(1, "Sample ID is required").max(120);
 
 export const endotoxinOrderInputSchema = z.object({
   sample_ids: z.array(sampleId).min(1).max(100),
-  spend_less_than_each: z.number().positive().finite().max(1_000_000),
+  spend_less_than_each: z.number().positive().finite().max(1_000_000).optional(),
   currency: z.literal("USD").default("USD"),
 }).superRefine((value, context) => {
   const seen = new Set<string>();
@@ -92,7 +92,7 @@ export function centsToDollars(value: number): number {
 export function orderFingerprint(input: EndotoxinOrderInput): string {
   return JSON.stringify({
     sample_ids: input.sample_ids.map((id) => id.trim()),
-    spend_less_than_each: input.spend_less_than_each,
+    spend_less_than_each: input.spend_less_than_each ?? null,
     currency: input.currency,
   });
 }

@@ -13,6 +13,17 @@ const environment = {
 };
 const executionContext = { waitUntil() {}, passThroughOnException() {} };
 
+test("marks every rendered page for site-wide WebMCP registration", async () => {
+  const app = await worker();
+  for (const path of ["/", "/login", "/reset-password", "/user", "/user/requests/new"]) {
+    const response = await app.fetch(new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }), environment, executionContext);
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get("origin-agent-cluster"), "?1", path);
+    assert.equal(response.headers.get("permissions-policy"), "tools=(self)", path);
+    assert.match(await response.text(), /data-webmcp-status="registering"/, path);
+  }
+});
+
 test("server-renders the ClearSignal marketing page", async () => {
   const response = await (await worker()).fetch(
     new Request("http://localhost/", { headers: { accept: "text/html" } }),
