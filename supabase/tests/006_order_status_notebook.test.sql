@@ -132,8 +132,8 @@ select is(
 select results_eq(
   $$select sequence_number from public.obsidian_notebook_events
     where session_id='56000000-0000-4000-8000-000000000001' order by sequence_number$$,
-  $$values (1::bigint),(2::bigint),(3::bigint),(4::bigint),(5::bigint),(6::bigint),(7::bigint)$$,
-  'order and status events retain unique monotonic sequences'
+  $$values (1::bigint),(2::bigint),(3::bigint),(4::bigint),(5::bigint),(6::bigint)$$,
+  'completion closes the event stream after unique monotonic sequences'
 );
 
 select set_config('request.jwt.claim.sub','16000000-0000-4000-8000-000000000004',true);

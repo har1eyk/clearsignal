@@ -9,7 +9,7 @@ export const operationIdSchema = z.string().uuid();
 
 export type NotebookEvent = {
   sequence: number;
-  kind: "quote" | "guidance" | "order";
+  kind: "quote" | "guidance" | "order" | "order_status";
   operation_id: string;
   payload: Record<string, unknown>;
   created_at: string;
@@ -53,7 +53,7 @@ export function accessToken(request: Request): string | undefined {
   return authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : undefined;
 }
 
-export async function assertOpenBrowserSession(sessionId: string, token: string) {
+export async function assertActiveBrowserSession(sessionId: string, token: string) {
   const supabase = notebookSupabase();
   const { data, error } = await supabase.rpc("get_obsidian_browser_session", {
     p_session_id: sessionIdSchema.parse(sessionId),
@@ -61,6 +61,12 @@ export async function assertOpenBrowserSession(sessionId: string, token: string)
   });
   if (error) throw error;
   return rpcValue<Record<string, unknown>>(data);
+}
+
+export async function assertOpenBrowserSession(sessionId: string, token: string) {
+  const session = await assertActiveBrowserSession(sessionId, token);
+  if (session.status !== "open") throw new ApiError(409, "Notebook session is closing", "notebook_session_closing");
+  return session;
 }
 
 export async function appendPublicEvent({

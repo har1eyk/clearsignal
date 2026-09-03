@@ -32,3 +32,12 @@ test("ordered migrations separate enum creation from status-event trigger use", 
   assert.match(behavior, /create trigger append_obsidian_order_status_events/);
   assert.match(behavior, /create or replace function public\.set_test_order_status/);
 });
+
+test("completion uses an ordered closing handshake for notebook sessions", async () => {
+  const enumMigration = await readFile(new URL("../../supabase/migrations/20260903020000_obsidian_session_closing_enum.sql", import.meta.url), "utf8");
+  const behavior = await readFile(new URL("../../supabase/migrations/20260903030000_complete_closes_notebook_sessions.sql", import.meta.url), "utf8");
+  assert.match(enumMigration, /add value if not exists 'closing'/);
+  assert.match(behavior, /new\.status = 'complete'/);
+  assert.match(behavior, /set status = 'closing'/);
+  assert.match(behavior, /v_session\.status = 'closed'/);
+});

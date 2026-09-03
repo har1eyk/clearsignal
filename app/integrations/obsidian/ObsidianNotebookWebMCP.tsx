@@ -17,7 +17,7 @@ type WebMCPTool = {
 };
 type WebMCPModelContext = { registerTool(tool: WebMCPTool, options?: { signal?: AbortSignal }): Promise<void> };
 type WebMCPDocument = Document & { modelContext?: WebMCPModelContext };
-type PairingStatus = "pairing" | "ready" | "closed" | "invalid" | "unsupported";
+type PairingStatus = "pairing" | "ready" | "closing" | "closed" | "invalid" | "unsupported";
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false, untrustedContentHint: true };
 
@@ -54,9 +54,12 @@ export function ObsidianNotebookWebMCP({ sessionId }: { sessionId: string }) {
     let captured: BrowserNotebookSession | null = null;
     const check = () => captured && fetch(`/api/integrations/obsidian/sessions/${encodeURIComponent(sessionId)}`, {
       headers: { "X-ClearSignal-Notebook-Token": `Bearer ${captured.browserToken}` }, cache: "no-store",
-    }).then((response) => {
+    }).then(async (response) => {
       if (!active) return;
-      if (response.ok) setStatus("ready");
+      if (response.ok) {
+        const result = await response.json() as { data?: { status?: "open" | "closing" } };
+        setStatus(result.data?.status === "closing" ? "closing" : "ready");
+      }
       else if (response.status === 409 || response.status === 423) {
         clearBrowserNotebookSession();
         setStatus("closed");
@@ -144,6 +147,7 @@ export function ObsidianNotebookWebMCP({ sessionId }: { sessionId: string }) {
   const copy: Record<PairingStatus, { title: string; body: string }> = {
     pairing: { title: "Pairing with your notebook…", body: "Keep this page open while ClearSignal checks the private notebook session." },
     ready: { title: "Notebook paired", body: "Quote and reviewed-guidance tools are available. Ordering becomes available after ClearSignal sign-in and always shows a final price confirmation." },
+    closing: { title: "Finishing notebook session…", body: "The final order status is ready. Obsidian is saving it before this connection closes." },
     closed: { title: "Notebook session closed", body: "This page can no longer read from or write to the notebook record." },
     invalid: { title: "Pairing link unavailable", body: "Return to Obsidian and run the request again to create a new private session." },
     unsupported: { title: "Site tools not detected", body: "Open this page in ChatGPT’s built-in browser and keep the page open during the conversation." },
