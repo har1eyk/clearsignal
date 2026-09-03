@@ -52,13 +52,15 @@ test("server-renders the ClearSignal marketing page", async () => {
     "How long does endotoxin testing take?",
     "What information is included with the result?",
     "Where do I send my samples?",
+    "Are plasmid samples okay to send?",
   ]) assert.match(html, new RegExp(question.replace(/[?]/g, "\\?")));
   assert.match(html, /The standard endotoxin test costs \$375\.00 USD per sample\./);
   assert.match(html, /Sample names are all that is needed, but you can also add project name, and testing purpose\./);
   assert.match(html, />3-5 days</);
   assert.match(html, /The result will report endotoxin concentration in endotoxin units per milliliter \(EU\/mL\)\./);
   assert.match(html, /Samples can be sent to 555 Jackson Dr, Baltimore, MD 21208\./);
-  assert.equal([...html.matchAll(/<details class="faq-item"/g)].length, 11);
+  assert.equal([...html.matchAll(/<details class="faq-item"/g)].length, 12);
+  assert.match(html, /Yes, we routinely test aqueous samples containing plasmid\./);
   assert.doesNotMatch(html, /id="contact-form"|href="#contact"/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });

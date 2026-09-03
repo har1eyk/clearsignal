@@ -20,7 +20,7 @@ test("returns the public FAQ catalog without internal search aliases", () => {
   const response = getEndotoxinFaqResponse();
 
   assert.equal(response.status, "catalog");
-  assert.equal(response.count, 11);
+  assert.equal(response.count, 12);
   assert.deepEqual(
     response.faqs,
     endotoxinFaqs.map(({ question, answer }) => ({ question, answer })),
@@ -53,6 +53,7 @@ test("matches common customer paraphrases deterministically", () => {
     ["How quickly will I receive results?", "How long does endotoxin testing take?"],
     ["Does the report include EU/mL?", "What information is included with the result?"],
     ["What is the shipping address?", "Where do I send my samples?"],
+    ["Can you test aqueous plasmids?", "Are plasmid samples okay to send?"],
   ] as const;
 
   for (const [query, expectedQuestion] of cases) {

@@ -61,6 +61,11 @@ export const endotoxinFaqs = [
     answer: "Samples can be sent to 555 Jackson Dr, Baltimore, MD 21208.",
     aliases: ["send samples", "ship samples", "shipping address", "where to send samples", "delivery address"],
   },
+  {
+    question: "Are plasmid samples okay to send?",
+    answer: "Yes, we routinely test aqueous samples containing plasmid.",
+    aliases: ["plasmid samples", "send plasmids", "test plasmids", "aqueous plasmid samples", "plasmid sample testing"],
+  },
 ] as const;
 
 export type EndotoxinFaq = (typeof endotoxinFaqs)[number];
