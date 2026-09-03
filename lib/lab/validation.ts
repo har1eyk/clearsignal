@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TEST_ORDER_STATUSES } from "./types";
 
 const uuid = z.string().uuid();
 const optionalText = z.string().trim().max(2000).optional().nullable();
@@ -189,5 +190,10 @@ export const materialLotSchema = z.object({
 
 export const statusChangeSchema = z.object({
   status: z.enum(["active", "retired"]),
+  reason: z.string().trim().min(1).max(1000),
+});
+
+export const testOrderStatusChangeSchema = z.object({
+  status: z.enum(TEST_ORDER_STATUSES),
   reason: z.string().trim().min(1).max(1000),
 });

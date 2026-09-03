@@ -1,6 +1,16 @@
 export const LAB_ROLES = ["admin", "analyst", "reviewer", "viewer"] as const;
 export type LabRole = (typeof LAB_ROLES)[number];
 
+export const TEST_ORDER_STATUSES = [
+  "pending_laboratory_review",
+  "preparing_samples",
+  "in_testing",
+  "in_analysis",
+  "in_review",
+  "complete",
+] as const;
+export type TestOrderStatus = (typeof TEST_ORDER_STATUSES)[number];
+
 export const WELL_ROLES = ["blank", "standard", "sample", "ppc"] as const;
 export type WellRole = (typeof WELL_ROLES)[number];
 
@@ -83,4 +93,3 @@ export type RfcCalculation = {
   curveParameters: CurveParameters | null;
   results: CalculationResult[];
 };
-

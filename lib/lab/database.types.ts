@@ -1299,6 +1299,8 @@ export type Database = {
           quote_confirmed_at: string | null
           requested_at: string
           spend_less_than_each_cents: number | null
+          status: Database["public"]["Enums"]["test_order_status"]
+          status_updated_at: string
           total_price_cents: number
           unit_price_cents: number
         }
@@ -1318,6 +1320,8 @@ export type Database = {
           quote_confirmed_at?: string | null
           requested_at?: string
           spend_less_than_each_cents?: number | null
+          status?: Database["public"]["Enums"]["test_order_status"]
+          status_updated_at?: string
           total_price_cents?: number
           unit_price_cents?: number
         }
@@ -1337,6 +1341,8 @@ export type Database = {
           quote_confirmed_at?: string | null
           requested_at?: string
           spend_less_than_each_cents?: number | null
+          status?: Database["public"]["Enums"]["test_order_status"]
+          status_updated_at?: string
           total_price_cents?: number
           unit_price_cents?: number
         }
@@ -1476,6 +1482,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_test_order_status: {
+        Args: {
+          p_order_id: string
+          p_reason: string
+          p_status: Database["public"]["Enums"]["test_order_status"]
+        }
+        Returns: Json
+      }
       review_assay_run: {
         Args: {
           p_comment?: string
@@ -1577,6 +1591,13 @@ export type Database = {
         | "consumed"
         | "disposed"
       specification_decision: "pass" | "fail" | "not_reportable"
+      test_order_status:
+        | "pending_laboratory_review"
+        | "preparing_samples"
+        | "in_testing"
+        | "in_analysis"
+        | "in_review"
+        | "complete"
       well_role: "blank" | "standard" | "sample" | "ppc"
     }
     CompositeTypes: {
@@ -1730,6 +1751,14 @@ export const Constants = {
         "disposed",
       ],
       specification_decision: ["pass", "fail", "not_reportable"],
+      test_order_status: [
+        "pending_laboratory_review",
+        "preparing_samples",
+        "in_testing",
+        "in_analysis",
+        "in_review",
+        "complete",
+      ],
       well_role: ["blank", "standard", "sample", "ppc"],
     },
   },

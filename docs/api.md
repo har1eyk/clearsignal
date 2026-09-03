@@ -38,6 +38,14 @@ less than $375 fails; a limit above $375 passes. The visible
 site confirmation shows the exact samples, unit price, total, and limit before
 the confirmation operation is called.
 
+Order progress is persisted as one of `pending_laboratory_review`,
+`preparing_samples`, `in_testing`, `in_analysis`, `in_review`, or `complete`.
+An admin, analyst, or reviewer can call
+`POST /api/lab/endotoxin-orders/:id/status` with `{ "status": "in_testing",
+"reason": "Assay run started" }`. A real status change is audited and appends
+an `order_status` event to every open linked Obsidian notebook session; setting
+the current status again succeeds as an explicit no-op without adding an event.
+
 1. Submit a multi-sample intake with `POST /api/lab/testing-requests`. This
    creates the testing request and its samples atomically for any active lab
    member. Matrix may also remain pending during intake. Samples remain pending
