@@ -254,7 +254,7 @@ export function TestingRequestForm() {
             <div><dt>Samples submitted</dt><dd>{created.sample_count}</dd></div>
             {created.unit_price != null && created.currency && <div><dt>Price per test</dt><dd>{new Intl.NumberFormat("en-US", { style: "currency", currency: created.currency }).format(created.unit_price)}</dd></div>}
             {created.total != null && created.currency && <div><dt>Order total</dt><dd>{new Intl.NumberFormat("en-US", { style: "currency", currency: created.currency }).format(created.total)}</dd></div>}
-            <div><dt>Status</dt><dd>Pending laboratory review</dd></div>
+            <div><dt>Status</dt><dd>Order submitted</dd></div>
           </dl>
           <Link className="button button-amber" href="/user">Return to workspace <span aria-hidden="true">→</span></Link>
         </section>

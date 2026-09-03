@@ -4,7 +4,6 @@ import test from "node:test";
 import { endotoxinOrderInputSchema } from "../../lib/lab/endotoxin-order";
 import { buildNotebookQuote, notebookQuoteSchema } from "../../lib/lab/notebook-quote";
 import { generateCapabilityToken, sha256 } from "../../lib/lab/notebook-session";
-import { GUIDANCE_CATALOG_VERSION, reviewedGuidance } from "../../lib/lab/service-guidance";
 
 test("notebook capabilities are independent high-entropy values and only hashes are persisted", async () => {
   const readToken = generateCapabilityToken();
@@ -37,24 +36,26 @@ test("the strict spend limit is optional for an order", () => {
   assert.deepEqual(endotoxinOrderInputSchema.parse({ sample_ids: ["A"] }), { sample_ids: ["A"], currency: "USD" });
 });
 
-test("guidance never invents operational instructions before scientific review", () => {
-  const response = reviewedGuidance("How should I prepare and ship a serum sample?", "serum");
-  assert.equal(response.status, "needs_human_review");
-  assert.equal(response.answer, null);
-  assert.equal(response.catalog_version, GUIDANCE_CATALOG_VERSION);
-  assert.match(response.limitations[0], /No scientist-reviewed/);
-});
-
 test("integration page exposes top-level site tools and no iframe", async () => {
   const component = await readFile(new URL("../../app/integrations/obsidian/ObsidianNotebookWebMCP.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../../app/integrations/obsidian/page.tsx", import.meta.url), "utf8");
+  const coordinator = await readFile(new URL("../../app/ClearSignalWebMCP.tsx", import.meta.url), "utf8");
+  const faqRoute = await readFile(new URL("../../app/api/integrations/obsidian/sessions/[id]/faq/route.ts", import.meta.url), "utf8");
   assert.match(component, /quote_endotoxin_tests/);
-  assert.match(component, /get_endotoxin_service_guidance/);
+  assert.doesNotMatch(component, /get_endotoxin_service_guidance/);
+  assert.match(coordinator, /get_endotoxin_faqs/);
+  assert.match(coordinator, /getNotebookAwareFaqResponse/);
+  assert.match(faqRoute, /response\.status !== "matched"/);
+  assert.match(faqRoute, /kind: "guidance"/);
+  assert.match(faqRoute, /source_type: "published_faq"/);
   assert.match(component, /Finishing notebook session/);
   assert.match(component, /closeBrowserNotebookSession\(sessionId\)/);
   assert.match(component, /isBrowserNotebookSessionClosed\(sessionId\) \? "closed" : "invalid"/);
   assert.match(component, /status !== "ready"/);
-  assert.match(await readFile(new URL("../../app/ClearSignalWebMCP.tsx", import.meta.url), "utf8"), /order_endotoxin_tests/);
+  assert.match(coordinator, /order_endotoxin_tests/);
+  assert.match(coordinator, /status: CUSTOMER_ORDER_STATUS/);
+  assert.match(coordinator, /Order submitted/);
+  assert.match(await readFile(new URL("../../app/user/requests/new/TestingRequestForm.tsx", import.meta.url), "utf8"), /Order submitted/);
   assert.doesNotMatch(page, /<iframe/i);
   assert.match(component, /history\.replaceState/);
 });

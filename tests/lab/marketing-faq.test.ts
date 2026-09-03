@@ -54,6 +54,7 @@ test("matches common customer paraphrases deterministically", () => {
     ["Does the report include EU/mL?", "What information is included with the result?"],
     ["What is the shipping address?", "Where do I send my samples?"],
     ["Can you test aqueous plasmids?", "Are plasmid samples okay to send?"],
+    ["Can ClearSignal process my plasmid samples?", "Are plasmid samples okay to send?"],
   ] as const;
 
   for (const [query, expectedQuestion] of cases) {

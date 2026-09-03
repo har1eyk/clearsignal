@@ -22,7 +22,7 @@ type PairingStatus = "pairing" | "ready" | "closing" | "closed" | "invalid" | "u
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false, untrustedContentHint: true };
 
-async function notebookCall(session: BrowserNotebookSession, action: "quote" | "guidance", input: Record<string, unknown>, signal?: AbortSignal) {
+async function notebookCall(session: BrowserNotebookSession, action: "quote", input: Record<string, unknown>, signal?: AbortSignal) {
   const response = await fetch(`/api/integrations/obsidian/sessions/${encodeURIComponent(session.sessionId)}/${action}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-ClearSignal-Notebook-Token": `Bearer ${session.browserToken}` },
@@ -102,20 +102,6 @@ export function ObsidianNotebookWebMCP({ sessionId }: { sessionId: string }) {
           annotations: READ_ONLY,
           execute: (input, options) => notebookCall(session, "quote", input, options?.signal),
         },
-        {
-          name: "get_endotoxin_service_guidance",
-          description: "Return only scientist-reviewed ClearSignal service guidance. If no reviewed answer applies, returns needs_human_review and no operational answer.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              question: { type: "string", minLength: 3, maxLength: 2000 },
-              sample_type: { type: "string", minLength: 1, maxLength: 200 },
-            },
-            required: ["question"], additionalProperties: false,
-          },
-          annotations: READ_ONLY,
-          execute: (input, options) => notebookCall(session, "guidance", input, options?.signal),
-        },
       ];
       await Promise.all(tools.map((tool) => modelContext.registerTool(tool, { signal: controller.signal })));
       if (active) document.documentElement.dataset.obsidianWebmcp = "ready";
@@ -147,7 +133,7 @@ export function ObsidianNotebookWebMCP({ sessionId }: { sessionId: string }) {
 
   const copy: Record<PairingStatus, { title: string; body: string }> = {
     pairing: { title: "Pairing with your notebook…", body: "Keep this page open while ClearSignal checks the private notebook session." },
-    ready: { title: "Notebook paired", body: "Quote and reviewed-guidance tools are available. Ordering becomes available after ClearSignal sign-in and always shows a final price confirmation." },
+    ready: { title: "Notebook paired", body: "Quote and published-FAQ tools are available. Ordering becomes available after ClearSignal sign-in and always shows a final price confirmation." },
     closing: { title: "Finishing notebook session…", body: "The final order status is ready. Obsidian is saving it before this connection closes." },
     closed: { title: "Notebook session closed", body: "This page can no longer read from or write to the notebook record." },
     invalid: { title: "Pairing link unavailable", body: "Return to Obsidian and run the request again to create a new private session." },

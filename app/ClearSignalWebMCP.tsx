@@ -118,6 +118,28 @@ const READ_ONLY_TOOL_ANNOTATIONS: ToolAnnotations = {
   untrustedContentHint: false,
 };
 
+const CUSTOMER_ORDER_STATUS = "order_submitted" as const;
+
+async function getNotebookAwareFaqResponse(question: unknown, signal?: AbortSignal) {
+  const notebook = readBrowserNotebookSession();
+  if (!notebook) return getEndotoxinFaqResponse(question);
+  const response = await fetch(`/api/integrations/obsidian/sessions/${encodeURIComponent(notebook.sessionId)}/faq`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-ClearSignal-Notebook-Token": `Bearer ${notebook.browserToken}`,
+    },
+    body: JSON.stringify({ ...(question === undefined ? {} : { question }), operation_id: crypto.randomUUID() }),
+    cache: "no-store",
+    signal,
+  });
+  const result = await response.json() as { data?: unknown; error?: { code?: string; message?: string; details?: unknown } };
+  if (!response.ok || !result.data) {
+    return { ok: false, error: result.error ?? { code: "request_failed", message: "ClearSignal could not check its published FAQs." } };
+  }
+  return result.data;
+}
+
 function failure(error: unknown) {
   if (error instanceof TestingRequestClientError) {
     return { ok: false, error: { code: error.code, message: error.message, details: error.details } };
@@ -343,7 +365,7 @@ export function ClearSignalWebMCP() {
         unit_price: created.unit_price,
         total: created.total,
         currency: created.currency,
-        status: created.status,
+        status: CUSTOMER_ORDER_STATUS,
       };
     } catch (error) {
       if (error instanceof TestingRequestClientError && ["price_intent_expired", "catalog_changed", "invalid_price_intent", "price_cap_exceeded"].includes(error.code)) {
@@ -388,7 +410,7 @@ export function ClearSignalWebMCP() {
       description: "Return all published ClearSignal endotoxin FAQs, or match one customer question to a published answer. Unmatched questions never receive a guessed answer.",
       inputSchema: FAQ_INPUT_SCHEMA,
       annotations: READ_ONLY_TOOL_ANNOTATIONS,
-      execute: ({ question }) => getEndotoxinFaqResponse(question),
+      execute: ({ question }, options) => getNotebookAwareFaqResponse(question, options?.signal),
     };
 
     const orderTool: WebMCPTool | null = access.status === "checking" ? null : access.status === "active" ? {
@@ -472,7 +494,7 @@ export function ClearSignalWebMCP() {
                 <div><dt>Samples</dt><dd>{notice.order.sample_count}</dd></div>
                 <div><dt>Price per test</dt><dd>{money(notice.order.unit_price, notice.order.currency)}</dd></div>
                 <div><dt>Order total</dt><dd>{money(notice.order.total, notice.order.currency)}</dd></div>
-                <div><dt>Status</dt><dd>Pending laboratory review</dd></div>
+                <div><dt>Status</dt><dd>Order submitted</dd></div>
               </dl>
             ) : <p>{notice.message}</p>}
             <button type="button" className="button button-amber" onClick={() => setNotice(null)}>Close</button>
