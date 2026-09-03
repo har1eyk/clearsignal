@@ -51,6 +51,8 @@ test("integration page exposes top-level site tools and no iframe", async () => 
   assert.match(component, /quote_endotoxin_tests/);
   assert.match(component, /get_endotoxin_service_guidance/);
   assert.match(component, /Finishing notebook session/);
+  assert.match(component, /closeBrowserNotebookSession\(sessionId\)/);
+  assert.match(component, /isBrowserNotebookSessionClosed\(sessionId\) \? "closed" : "invalid"/);
   assert.match(component, /status !== "ready"/);
   assert.match(await readFile(new URL("../../app/ClearSignalWebMCP.tsx", import.meta.url), "utf8"), /order_endotoxin_tests/);
   assert.doesNotMatch(page, /<iframe/i);

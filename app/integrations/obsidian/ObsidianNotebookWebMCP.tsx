@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  clearBrowserNotebookSession,
+  closeBrowserNotebookSession,
+  isBrowserNotebookSessionClosed,
   readBrowserNotebookSession,
   storeBrowserNotebookSession,
   type BrowserNotebookSession,
@@ -61,7 +62,7 @@ export function ObsidianNotebookWebMCP({ sessionId }: { sessionId: string }) {
         setStatus(result.data?.status === "closing" ? "closing" : "ready");
       }
       else if (response.status === 409 || response.status === 423) {
-        clearBrowserNotebookSession();
+        closeBrowserNotebookSession(sessionId);
         setStatus("closed");
       } else setStatus("invalid");
     }).catch(() => { if (active) setStatus("invalid"); });
@@ -69,7 +70,7 @@ export function ObsidianNotebookWebMCP({ sessionId }: { sessionId: string }) {
       captured = captureSession(sessionId);
       if (!active) return;
       if (!captured) {
-        setStatus("invalid");
+        setStatus(isBrowserNotebookSessionClosed(sessionId) ? "closed" : "invalid");
         return;
       }
       setSession(captured);
