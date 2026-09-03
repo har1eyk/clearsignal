@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { endotoxinFaqs } from "@/lib/marketing-faq";
 
 type ToolAnnotations = {
   readOnlyHint?: boolean;
@@ -121,13 +120,6 @@ const tools: WebMCPTool[] = [
       history.replaceState(null, "", `#${sectionName}`);
       return `Showing ${sectionName}: ${sections[sectionName]}.`;
     },
-  },
-  {
-    name: "get_endotoxin_faqs",
-    description: "Return ClearSignal's frequently asked questions about endotoxin testing and sample submission.",
-    inputSchema: { type: "object", properties: {}, additionalProperties: false },
-    annotations: { readOnlyHint: true, untrustedContentHint: false },
-    execute: () => json({ faqs: endotoxinFaqs }),
   },
 ];
 

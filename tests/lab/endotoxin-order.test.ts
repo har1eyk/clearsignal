@@ -45,13 +45,17 @@ test("creates a stable fingerprint for retrying the same instruction", () => {
 test("registers one state-appropriate ordering tool from the root layout", async () => {
   const coordinator = await readFile(new URL("../../app/ClearSignalWebMCP.tsx", import.meta.url), "utf8");
   const layout = await readFile(new URL("../../app/layout.tsx", import.meta.url), "utf8");
+  const landingTools = await readFile(new URL("../../app/WebMCP.tsx", import.meta.url), "utf8");
   const requestForm = await readFile(new URL("../../app/user/requests/new/TestingRequestForm.tsx", import.meta.url), "utf8");
+  assert.match(coordinator, /name: "get_endotoxin_faqs"/);
   assert.match(coordinator, /name: "order_endotoxin_tests"/);
   assert.match(coordinator, /name: "start_endotoxin_order"/);
+  assert.match(coordinator, /const tools = orderTool \? \[faqTool, orderTool\] : \[faqTool\]/);
   assert.match(coordinator, /access\.status === "active" \?/);
   assert.match(coordinator, /onAuthStateChange/);
   assert.match(coordinator, /data.*webmcpStatus|webmcpStatus/);
   assert.match(layout, /<ClearSignalWebMCP \/>/);
+  assert.doesNotMatch(landingTools, /get_endotoxin_faqs/);
   assert.doesNotMatch(requestForm, /TestingRequestWebMCP|order_endotoxin_tests/);
   assert.doesNotMatch(coordinator, /get_testing_request_requirements|prepare_testing_request|submit_testing_request/);
 });

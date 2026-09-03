@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { z } from "zod";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
+import { getEndotoxinFaqResponse } from "@/lib/marketing-faq";
 import { confirmEndotoxinOrder, previewEndotoxinOrder } from "@/lib/lab/endotoxin-order-client";
 import {
   endotoxinOrderInputSchema,
@@ -94,6 +95,27 @@ const MUTATING_TOOL_ANNOTATIONS: ToolAnnotations = {
   idempotentHint: true,
   openWorldHint: false,
   untrustedContentHint: true,
+};
+
+const FAQ_INPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    question: {
+      type: "string",
+      minLength: 2,
+      maxLength: 500,
+      description: "Optional customer question to match against ClearSignal's published endotoxin FAQs.",
+    },
+  },
+  additionalProperties: false,
+};
+
+const READ_ONLY_TOOL_ANNOTATIONS: ToolAnnotations = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+  untrustedContentHint: false,
 };
 
 function failure(error: unknown) {
@@ -356,12 +378,20 @@ export function ClearSignalWebMCP() {
   }, [access, executeOrder]);
 
   useEffect(() => {
-    if (!modelContext || access.status === "checking") return;
+    if (!modelContext) return;
     const controller = new AbortController();
     const root = document.documentElement;
     root.dataset.webmcpStatus = "registering";
 
-    const tool: WebMCPTool = access.status === "active" ? {
+    const faqTool: WebMCPTool = {
+      name: "get_endotoxin_faqs",
+      description: "Return all published ClearSignal endotoxin FAQs, or match one customer question to a published answer. Unmatched questions never receive a guessed answer.",
+      inputSchema: FAQ_INPUT_SCHEMA,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS,
+      execute: ({ question }) => getEndotoxinFaqResponse(question),
+    };
+
+    const orderTool: WebMCPTool | null = access.status === "checking" ? null : access.status === "active" ? {
       name: "order_endotoxin_tests",
       description: "Price and order the standard endotoxin test for sample IDs. ClearSignal enforces the strict per-test limit, asks for confirmation, and creates one order.",
       inputSchema: ORDER_INPUT_SCHEMA,
@@ -399,20 +429,25 @@ export function ClearSignalWebMCP() {
       },
     };
 
-    modelContext.registerTool(tool, { signal: controller.signal }).then(() => {
+    const tools = orderTool ? [faqTool, orderTool] : [faqTool];
+
+    Promise.all(tools.map((tool) => modelContext.registerTool(tool, { signal: controller.signal }))).then(() => {
       if (controller.signal.aborted) return;
       root.dataset.webmcpStatus = "ready";
-      root.dataset.webmcpTool = tool.name;
+      root.dataset.webmcpTool = orderTool?.name ?? faqTool.name;
+      root.dataset.webmcpTools = tools.map(({ name }) => name).join(",");
     }).catch((error: unknown) => {
       if (controller.signal.aborted) return;
       root.dataset.webmcpStatus = "error";
       delete root.dataset.webmcpTool;
-      console.warn("ClearSignal ordering tool could not be registered.", error);
+      delete root.dataset.webmcpTools;
+      console.warn("ClearSignal WebMCP tools could not be registered.", error);
     });
 
     return () => {
       controller.abort();
       delete root.dataset.webmcpTool;
+      delete root.dataset.webmcpTools;
     };
   }, [access, executeOrder, modelContext]);
 
