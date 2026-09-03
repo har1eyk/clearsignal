@@ -36,21 +36,32 @@ test("ordered migrations separate enum creation from status-event trigger use", 
 test("completion uses an ordered closing handshake for notebook sessions", async () => {
   const enumMigration = await readFile(new URL("../../supabase/migrations/20260903020000_obsidian_session_closing_enum.sql", import.meta.url), "utf8");
   const behavior = await readFile(new URL("../../supabase/migrations/20260903030000_complete_closes_notebook_sessions.sql", import.meta.url), "utf8");
+  const resultsEnum = await readFile(new URL("../../supabase/migrations/20260903060000_obsidian_results_event_enum.sql", import.meta.url), "utf8");
+  const resultsBehavior = await readFile(new URL("../../supabase/migrations/20260903070000_demo_results_notebook_events.sql", import.meta.url), "utf8");
   assert.match(enumMigration, /add value if not exists 'closing'/);
   assert.match(behavior, /new\.status = 'complete'/);
   assert.match(behavior, /set status = 'closing'/);
   assert.match(behavior, /v_session\.status = 'closed'/);
+  assert.match(resultsEnum, /add value if not exists 'results'/);
+  assert.match(resultsBehavior, /'sample_results', v_sample_results/);
+  assert.match(resultsBehavior, /'negative_cutoff_eu_ml', 0\.05/);
+  assert.match(resultsBehavior, /v_sequence \+ 1, 'results'/);
+  assert.ok(resultsBehavior.indexOf("v_sequence + 1, 'results'") < resultsBehavior.indexOf("set status = 'closing'"));
 });
 
-test("demo progression is database-controlled, private, and disabled by default", async () => {
-  const migration = await readFile(new URL("../../supabase/migrations/20260903040000_demo_order_progression.sql", import.meta.url), "utf8");
-  assert.match(migration, /create table public\.demo_order_progression_config/);
-  assert.match(migration, /enabled boolean not null default false/);
-  assert.match(migration, /pending_to_preparing_seconds integer not null default 20/);
-  assert.match(migration, /create or replace function public\.advance_demo_test_orders/);
-  assert.match(migration, /for update skip locked/);
-  assert.match(migration, /'Automated demo progression'/);
-  assert.match(migration, /'clearsignal-demo-order-progression',\s*'1 second'/);
-  assert.match(migration, /revoke all on public\.demo_order_progression_config from public, anon, authenticated/);
-  assert.match(migration, /revoke all on function public\.advance_demo_test_orders\(integer\) from public, anon, authenticated/);
+test("order progression is database-controlled, private, and always active", async () => {
+  const baseMigration = await readFile(new URL("../../supabase/migrations/20260903040000_demo_order_progression.sql", import.meta.url), "utf8");
+  const alwaysOnMigration = await readFile(new URL("../../supabase/migrations/20260903050000_always_on_order_progression.sql", import.meta.url), "utf8");
+  assert.match(baseMigration, /create table public\.demo_order_progression_config/);
+  assert.match(baseMigration, /pending_to_preparing_seconds integer not null default 20/);
+  assert.match(baseMigration, /create or replace function public\.advance_demo_test_orders/);
+  assert.match(baseMigration, /for update skip locked/);
+  assert.match(baseMigration, /'Automated demo progression'/);
+  assert.match(baseMigration, /revoke all on public\.demo_order_progression_config from public, anon, authenticated/);
+  assert.match(baseMigration, /revoke all on function public\.advance_demo_test_orders\(integer\) from public, anon, authenticated/);
+  assert.match(alwaysOnMigration, /alter column enabled set default true/);
+  assert.match(alwaysOnMigration, /automatic order progression cannot be disabled/);
+  assert.match(alwaysOnMigration, /schedule := '1 second'/);
+  assert.match(alwaysOnMigration, /active := true/);
+  assert.match(alwaysOnMigration, /o\.order_number = 'TR-20260903-ED1A7B2C'/);
 });

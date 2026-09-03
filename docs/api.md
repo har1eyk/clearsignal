@@ -45,6 +45,12 @@ An admin, analyst, or reviewer can call
 "reason": "Assay run started" }`. A real status change is audited and appends
 an `order_status` event to every open linked Obsidian notebook session; setting
 the current status again succeeds as an explicit no-op without adding an event.
+When an order reaches `complete`, ClearSignal appends the completion event and a
+final `results` event in the same transaction before marking the notebook
+session `closing`. The results payload is explicitly simulated demo data: it
+contains one persisted three-decimal EU/mL value per sample, a demo-only 0.05
+EU/mL qualitative cutoff, and the shared four-point standard curve. The
+Obsidian plugin saves both final events before acknowledging closure.
 
 1. Submit a multi-sample intake with `POST /api/lab/testing-requests`. This
    creates the testing request and its samples atomically for any active lab

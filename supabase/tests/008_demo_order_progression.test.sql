@@ -8,8 +8,8 @@ select has_column('public', 'test_orders', 'demo_paused_seconds', 'orders retain
 select has_function('public', 'advance_demo_test_orders', array['integer'], 'private progression worker exists');
 select is(
   (select enabled from public.demo_order_progression_config where id),
-  false,
-  'demo progression defaults off'
+  true,
+  'automatic progression defaults on'
 );
 select results_eq(
   $$select pending_to_preparing_seconds, preparing_to_testing_seconds,
@@ -61,8 +61,8 @@ select is(
    where jobname = 'clearsignal-demo-order-progression'
      and database = current_database()
      and username = current_user),
-  false,
-  'the cron job defaults inactive'
+  true,
+  'the cron job defaults active'
 );
 select throws_ok(
   $$delete from public.demo_order_progression_config where id$$,
@@ -96,21 +96,20 @@ values (
   '18000000-0000-4000-8000-000000000001'
 );
 
-insert into public.test_orders(id, lab_id, order_number, created_by)
+insert into public.test_orders(id, lab_id, order_number, status, created_by)
 values (
   '38000000-0000-4000-8000-000000000001',
   '28000000-0000-4000-8000-000000000001',
-  'TR-DEMO-OFF',
+  'TR-DEMO-COMPLETE',
+  'complete',
   '18000000-0000-4000-8000-000000000001'
 );
 
 select is(
   (select demo_auto_progress from public.test_orders where id = '38000000-0000-4000-8000-000000000001'),
   false,
-  'orders created while disabled are not enrolled'
+  'completed orders are not enrolled'
 );
-
-update public.demo_order_progression_config set enabled = true where id;
 
 select is(
   (select active from cron.job
@@ -118,7 +117,7 @@ select is(
      and database = current_database()
      and username = current_user),
   true,
-  'enabling demo mode activates the cron job'
+  'the progression job remains active'
 );
 
 insert into public.test_orders(id, lab_id, order_number, created_by)
@@ -143,7 +142,7 @@ select ok(
 select is(
   (select demo_auto_progress from public.test_orders where id = '38000000-0000-4000-8000-000000000001'),
   false,
-  'enabling demo mode does not enroll existing orders'
+  'completed orders remain outside progression'
 );
 
 insert into public.obsidian_notebook_sessions(
@@ -240,7 +239,7 @@ select results_eq(
   $$select sequence_number from public.obsidian_notebook_events
     where session_id = '58000000-0000-4000-8000-000000000001'
     order by sequence_number$$,
-  $$values (1::bigint), (2::bigint), (3::bigint), (4::bigint), (5::bigint), (6::bigint)$$,
+  $$values (1::bigint), (2::bigint), (3::bigint), (4::bigint), (5::bigint), (6::bigint), (7::bigint)$$,
   'all automatic notebook events retain monotonic sequence numbers'
 );
 select is(
@@ -262,33 +261,27 @@ insert into public.test_orders(id, lab_id, order_number, created_by)
 values (
   '38000000-0000-4000-8000-000000000003',
   '28000000-0000-4000-8000-000000000001',
-  'TR-DEMO-PAUSE',
+  'TR-DEMO-CONFIG',
   '18000000-0000-4000-8000-000000000001'
 );
-update public.demo_order_progression_config set enabled = false where id;
-
-select results_eq(
-  $$select demo_next_transition_at is null,
-      demo_paused_seconds between 19 and 20
-    from public.test_orders where id = '38000000-0000-4000-8000-000000000003'$$,
-  $$values (true, true)$$,
-  'disabling demo mode preserves the remaining wait'
+select throws_ok(
+  $$update public.demo_order_progression_config set enabled = false where id$$,
+  '55000',
+  'automatic order progression cannot be disabled',
+  'automatic progression cannot be disabled'
+);
+select is(
+  (select enabled from public.demo_order_progression_config where id),
+  true,
+  'a rejected disable leaves progression enabled'
 );
 select is(
   (select active from cron.job
    where jobname = 'clearsignal-demo-order-progression'
      and database = current_database()
      and username = current_user),
-  false,
-  'disabling demo mode deactivates the cron job'
-);
-
-update public.demo_order_progression_config set enabled = true where id;
-select ok(
-  (select demo_next_transition_at between clock_timestamp() + interval '18 seconds'
-      and clock_timestamp() + interval '21 seconds'
-   from public.test_orders where id = '38000000-0000-4000-8000-000000000003'),
-  're-enabling demo mode resumes the remaining wait'
+  true,
+  'a rejected disable leaves the cron job active'
 );
 
 update public.demo_order_progression_config
@@ -300,28 +293,24 @@ select ok(
    from public.test_orders where id = '38000000-0000-4000-8000-000000000003'),
   'editing the current delay restarts the active countdown'
 );
-
-update public.demo_order_progression_config set enabled = false where id;
-update public.demo_order_progression_config
-set pending_to_preparing_seconds = 40
-where id;
-select is(
-  (select demo_paused_seconds from public.test_orders where id = '38000000-0000-4000-8000-000000000003'),
-  40,
-  'editing a paused stage replaces its remaining wait'
+select results_eq(
+  $$select demo_next_transition_at is not null, demo_paused_seconds is null
+    from public.test_orders where id = '38000000-0000-4000-8000-000000000003'$$,
+  $$values (true, true)$$,
+  'always-on orders retain an active countdown instead of paused state'
 );
 
 insert into public.test_orders(id, lab_id, order_number, created_by)
 values (
   '38000000-0000-4000-8000-000000000004',
   '28000000-0000-4000-8000-000000000001',
-  'TR-DEMO-DISABLED-NEW',
+  'TR-DEMO-ALWAYS-ON',
   '18000000-0000-4000-8000-000000000001'
 );
 select is(
   (select demo_auto_progress from public.test_orders where id = '38000000-0000-4000-8000-000000000004'),
-  false,
-  'orders created during a pause are never enrolled'
+  true,
+  'new orders are always enrolled'
 );
 select ok(
   pg_get_functiondef('public.advance_demo_test_orders(integer)'::regprocedure) ilike '%for update skip locked%',
@@ -344,11 +333,14 @@ select lives_ok(
   'manual status changes remain available for enrolled demo orders'
 );
 select results_eq(
-  $$select demo_auto_progress, demo_next_transition_at, demo_paused_seconds
+  $$select demo_auto_progress,
+      demo_next_transition_at between clock_timestamp() + interval '4 seconds'
+        and clock_timestamp() + interval '6 seconds',
+      demo_paused_seconds is null
     from public.test_orders
     where id = '38000000-0000-4000-8000-000000000003'$$,
-  $$values (true, null::timestamptz, 5)$$,
-  'a manual change adopts the configured delay for its new stage'
+  $$values (true, true, true)$$,
+  'a manual change adopts an active countdown for its new stage'
 );
 
 select * from finish();

@@ -19,6 +19,10 @@ values ('27000000-0000-4000-8000-000000000001','17000000-0000-4000-8000-00000000
 insert into public.test_orders(id, lab_id, order_number, created_by)
 values ('37000000-0000-4000-8000-000000000001','27000000-0000-4000-8000-000000000001','TR-CLOSING-1','17000000-0000-4000-8000-000000000001');
 
+insert into public.samples(id, lab_id, test_order_id, external_id, matrix, created_by, created_at) values
+  ('77000000-0000-4000-8000-000000000001','27000000-0000-4000-8000-000000000001','37000000-0000-4000-8000-000000000001','CLOSING-001','water','17000000-0000-4000-8000-000000000001','2026-09-03T12:00:00Z'),
+  ('77000000-0000-4000-8000-000000000002','27000000-0000-4000-8000-000000000001','37000000-0000-4000-8000-000000000001','CLOSING-002','water','17000000-0000-4000-8000-000000000001','2026-09-03T12:00:01Z');
+
 insert into public.obsidian_notebook_sessions(
   id, request_sha256, read_token_sha256, browser_token_sha256, status, closed_at
 ) values
@@ -65,8 +69,8 @@ select results_eq(
 select results_eq(
   $$select sequence_number from public.obsidian_notebook_events
     where session_id='57000000-0000-4000-8000-000000000001' order by sequence_number$$,
-  $$values (1::bigint),(2::bigint)$$,
-  'the final event receives the next monotonic sequence'
+  $$values (1::bigint),(2::bigint),(3::bigint)$$,
+  'the completion and results events receive monotonic sequences'
 );
 select is(
   (select count(*) from public.obsidian_notebook_sessions where id in (
@@ -88,7 +92,7 @@ select is(
 select is(
   jsonb_array_length(public.read_obsidian_notebook_events(
     '57000000-0000-4000-8000-000000000001',repeat('b',64),1
-  )->'events'), 1, 'the closing poll returns the unread final event'
+  )->'events'), 2, 'the closing poll returns the unread completion and results events'
 );
 select is(
   (public.get_obsidian_browser_session('57000000-0000-4000-8000-000000000001',repeat('c',64))->>'status'),
@@ -111,7 +115,7 @@ select is(
 );
 select is(
   (select count(*) from public.obsidian_notebook_events where session_id='57000000-0000-4000-8000-000000000001'),
-  2::bigint, 'closing sessions receive no later order events'
+  3::bigint, 'closing sessions receive no later order events'
 );
 select is(
   (select count(*) from public.obsidian_notebook_sessions where id in (
@@ -148,7 +152,7 @@ select is(
 );
 select is(
   (select count(*) from public.obsidian_notebook_events where session_id='57000000-0000-4000-8000-000000000002'),
-  2::bigint, 'the second linked session retained its final event before closure'
+  3::bigint, 'the second linked session retained its completion and results events before closure'
 );
 select is(
   (select count(*) from public.obsidian_notebook_events where session_id='57000000-0000-4000-8000-000000000003'),

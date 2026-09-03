@@ -9,7 +9,7 @@ export const operationIdSchema = z.string().uuid();
 
 export type NotebookEvent = {
   sequence: number;
-  kind: "quote" | "guidance" | "order" | "order_status";
+  kind: "quote" | "guidance" | "order" | "order_status" | "results";
   operation_id: string;
   payload: Record<string, unknown>;
   created_at: string;
