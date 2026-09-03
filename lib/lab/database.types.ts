@@ -228,6 +228,39 @@ export type Database = {
           },
         ]
       }
+      demo_order_progression_config: {
+        Row: {
+          analysis_to_review_seconds: number
+          enabled: boolean
+          id: boolean
+          pending_to_preparing_seconds: number
+          preparing_to_testing_seconds: number
+          review_to_complete_seconds: number
+          testing_to_analysis_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          analysis_to_review_seconds?: number
+          enabled?: boolean
+          id?: boolean
+          pending_to_preparing_seconds?: number
+          preparing_to_testing_seconds?: number
+          review_to_complete_seconds?: number
+          testing_to_analysis_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          analysis_to_review_seconds?: number
+          enabled?: boolean
+          id?: boolean
+          pending_to_preparing_seconds?: number
+          preparing_to_testing_seconds?: number
+          review_to_complete_seconds?: number
+          testing_to_analysis_seconds?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deviations: {
         Row: {
           created_at: string
@@ -1290,6 +1323,9 @@ export type Database = {
           created_at: string
           created_by: string
           currency: string
+          demo_auto_progress: boolean
+          demo_next_transition_at: string | null
+          demo_paused_seconds: number | null
           id: string
           idempotency_key: string | null
           lab_id: string
@@ -1311,6 +1347,9 @@ export type Database = {
           created_at?: string
           created_by: string
           currency?: string
+          demo_auto_progress?: boolean
+          demo_next_transition_at?: string | null
+          demo_paused_seconds?: number | null
           id?: string
           idempotency_key?: string | null
           lab_id: string
@@ -1332,6 +1371,9 @@ export type Database = {
           created_at?: string
           created_by?: string
           currency?: string
+          demo_auto_progress?: boolean
+          demo_next_transition_at?: string | null
+          demo_paused_seconds?: number | null
           id?: string
           idempotency_key?: string | null
           lab_id?: string
@@ -1409,6 +1451,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      advance_demo_test_orders: {
+        Args: { p_batch_size?: number }
+        Returns: number
+      }
       bootstrap_lab_admin: {
         Args: { p_lab_name: string; p_user_id: string }
         Returns: string

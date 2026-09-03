@@ -41,3 +41,16 @@ test("completion uses an ordered closing handshake for notebook sessions", async
   assert.match(behavior, /set status = 'closing'/);
   assert.match(behavior, /v_session\.status = 'closed'/);
 });
+
+test("demo progression is database-controlled, private, and disabled by default", async () => {
+  const migration = await readFile(new URL("../../supabase/migrations/20260903040000_demo_order_progression.sql", import.meta.url), "utf8");
+  assert.match(migration, /create table public\.demo_order_progression_config/);
+  assert.match(migration, /enabled boolean not null default false/);
+  assert.match(migration, /pending_to_preparing_seconds integer not null default 20/);
+  assert.match(migration, /create or replace function public\.advance_demo_test_orders/);
+  assert.match(migration, /for update skip locked/);
+  assert.match(migration, /'Automated demo progression'/);
+  assert.match(migration, /'clearsignal-demo-order-progression',\s*'1 second'/);
+  assert.match(migration, /revoke all on public\.demo_order_progression_config from public, anon, authenticated/);
+  assert.match(migration, /revoke all on function public\.advance_demo_test_orders\(integer\) from public, anon, authenticated/);
+});

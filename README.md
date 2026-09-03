@@ -80,6 +80,18 @@ service-role key is required by the application.
 - Approved report snapshots cannot be overwritten. Corrections require a new
   run linked with `supersedes_run_id`.
 
+## Demo order progression
+
+The singleton `public.demo_order_progression_config` row controls automatic
+order progression for presentations. Edit it through the Supabase Table Editor.
+It defaults to disabled with transition delays of 20, 5, 5, 5, and 5 seconds.
+Only orders created while `enabled` is true are enrolled. Turning it off pauses
+enrolled orders and turning it back on resumes their remaining waits; changing
+the delay for an order's current stage restarts that stage's countdown.
+
+The one-second `clearsignal-demo-order-progression` Cron job is activated and
+deactivated with the configuration switch. Disable the switch after a demo.
+
 API details are in [docs/api.md](docs/api.md).
 
 ## Verification
