@@ -39,6 +39,27 @@ test("server-renders the ClearSignal marketing page", async () => {
   assert.match(html, /From sample to/);
   assert.match(html, /Order Testing/);
   assert.match(html, /SAMPLE TO ANSWER/);
+  assert.match(html, /RESEARCHER FAQ/);
+  for (const question of [
+    "What is endotoxin, and why is it tested?",
+    "What types of samples can be tested?",
+    "Which endotoxin testing method is used?",
+    "How much does Endotoxin cost?",
+    "How much sample do I need to provide?",
+    "How should samples be labeled and prepared?",
+    "How is sample interference handled?",
+    "What information should accompany my testing request?",
+    "How long does endotoxin testing take?",
+    "What information is included with the result?",
+    "Where do I send my samples?",
+  ]) assert.match(html, new RegExp(question.replace(/[?]/g, "\\?")));
+  assert.match(html, /The standard endotoxin test costs \$375\.00 USD per sample\./);
+  assert.match(html, /Sample names are all that is needed, but you can also add project name, and testing purpose\./);
+  assert.match(html, />3-5 days</);
+  assert.match(html, /The result will report endotoxin concentration in endotoxin units per milliliter \(EU\/mL\)\./);
+  assert.match(html, /Samples can be sent to 555 Jackson Dr, Baltimore, MD 21208\./);
+  assert.equal([...html.matchAll(/<details class="faq-item"/g)].length, 11);
+  assert.doesNotMatch(html, /id="contact-form"|href="#contact"/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
 

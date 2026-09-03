@@ -1,6 +1,7 @@
 import { WebMCP } from "./WebMCP";
 import { BackgroundShader } from "./BackgroundShader";
 import { HorseshoeCrabArt } from "./HorseshoeCrabArt";
+import { endotoxinFaqs } from "@/lib/marketing-faq";
 
 const Arrow = () => <span aria-hidden="true">↗</span>;
 
@@ -31,7 +32,7 @@ export default function Home() {
           <a className="button button-small button-cream" href="/login">Login <Arrow /></a>
           <details className="mobile-menu">
             <summary aria-label="Open navigation">Menu</summary>
-            <div><a href="#technology">Technology</a><a href="#workflow">Workflow</a><a href="#performance">Performance</a><a href="#applications">Applications</a><a href="#contact">Contact</a></div>
+            <div><a href="#technology">Technology</a><a href="#workflow">Workflow</a><a href="#performance">Performance</a><a href="#applications">Applications</a><a href="#faq">FAQs</a></div>
           </details>
         </nav>
 
@@ -167,29 +168,30 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="contact section" id="contact">
-        <div className="shell contact-grid">
-          <div>
-            <p className="eyebrow light">START A CONVERSATION</p>
-            <h2>Let’s make your endotoxin workflow easier to trust.</h2>
-            <p>Tell us what you test and where the current process creates friction. An applications scientist will follow up with a focused next step.</p>
-            <div className="contact-signal"><span/><span/><span/><span/><span/></div>
+      <section className="faq section" id="faq">
+        <div className="shell faq-grid">
+          <div className="faq-intro">
+            <p className="eyebrow light">RESEARCHER FAQ</p>
+            <h2>Questions before you send a sample.</h2>
+            <p>Start with the essentials, then submit your sample details for a matrix-specific laboratory review.</p>
           </div>
-          <form className="contact-form" id="contact-form">
-            <label>Name<input name="name" autoComplete="name" required maxLength={100} placeholder="Your name" /></label>
-            <label>Work email<input type="email" name="email" autoComplete="email" required maxLength={254} placeholder="you@company.com" /></label>
-            <div className="form-row"><label>Company<input name="company" autoComplete="organization" maxLength={120} placeholder="Company" /></label><label>Role<input name="role" autoComplete="organization-title" maxLength={120} placeholder="Your role" /></label></div>
-            <label>Application or sample type<input name="application" maxLength={160} placeholder="e.g. biologic drug substance" /></label>
-            <label>Current testing method<select name="method" defaultValue=""><option value="" disabled>Select a method</option><option>Gel-clot</option><option>Chromogenic</option><option>Turbidimetric</option><option>Recombinant factor C</option><option>Other / evaluating</option></select></label>
-            <label>Message<textarea name="message" rows={3} maxLength={1000} placeholder="What would you like to improve?" /></label>
-            <label className="consent"><input type="checkbox" name="consent" required/><span>I agree to be contacted about this request. No marketing consent is preselected.</span></label>
-            <button className="button button-amber" type="submit">Request a conversation <Arrow /></button>
-          </form>
+          <div className="faq-list">
+            {endotoxinFaqs.map((faq, index) => (
+              <details className="faq-item" key={faq.question}>
+                <summary>
+                  <span className="faq-number">{String(index + 1).padStart(2, "0")}</span>
+                  <h3>{faq.question}</h3>
+                  <span className="faq-toggle" aria-hidden="true" />
+                </summary>
+                <div className="faq-answer"><p>{faq.answer}</p></div>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
       <footer>
-        <div className="shell footer-top"><a className="wordmark" href="#top"><span>CS</span> CLEAR<span className="mark">SIGNAL</span></a><p>Analytical clarity, from sample to answer.</p><a href="#contact">hello@clearsignal.example</a></div>
+        <div className="shell footer-top"><a className="wordmark" href="#top"><span>CS</span> CLEAR<span className="mark">SIGNAL</span></a><p>Analytical clarity, from sample to answer.</p><a href="#faq">Frequently asked questions</a></div>
         <div className="shell footer-bottom"><span>© 2026 ClearSignal concept</span><div><a href="#technology">Technology</a><a href="#quality">Resources</a><span>Privacy</span><span>Terms</span></div></div>
       </footer>
     </main>

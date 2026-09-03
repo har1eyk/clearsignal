@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { endotoxinFaqs } from "@/lib/marketing-faq";
 
 type ToolAnnotations = {
   readOnlyHint?: boolean;
@@ -30,7 +31,7 @@ const sections = {
   performance: "Illustrative performance evidence",
   applications: "Application and sample-type fit",
   quality: "Quality and implementation resources",
-  contact: "Demo request form",
+  faq: "Frequently asked questions about endotoxin testing",
 } as const;
 
 const workflow = [
@@ -51,18 +52,6 @@ const applicationGuidance = [
 
 function json(value: unknown) {
   return JSON.stringify(value, null, 2);
-}
-
-function setFormValue(name: string, value: unknown) {
-  if (typeof value !== "string" || value.length === 0) return;
-  const form = document.querySelector<HTMLFormElement>("#contact-form");
-  const field = form?.elements.namedItem(name);
-  if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) return;
-
-  if (field instanceof HTMLSelectElement && !Array.from(field.options).some((option) => option.value === value)) return;
-  field.value = value;
-  field.dispatchEvent(new Event("input", { bubbles: true }));
-  field.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 const tools: WebMCPTool[] = [
@@ -109,7 +98,7 @@ const tools: WebMCPTool[] = [
         sampleType,
         currentMethod: currentMethod ?? "Not provided",
         closestFit: match ? { area: match.area, typicalUse: match.fit } : { area: "Needs application review", typicalUse: "Discuss the product matrix, process stage, sample volume, and method requirements with an applications scientist." },
-        nextStep: "Use prepare_demo_request to place the relevant details into the contact form for the user to review.",
+        nextStep: "Review the FAQ section for general guidance, then use Order Testing to submit sample details for laboratory review.",
         caveat: "Confirm method suitability, interference controls, acceptance criteria, and regulatory requirements for the actual sample and intended use.",
       });
     },
@@ -134,28 +123,11 @@ const tools: WebMCPTool[] = [
     },
   },
   {
-    name: "prepare_demo_request",
-    description: "Fill the visible ClearSignal demo-request form for the user to review. This does not check consent, submit the form, send data, or contact anyone.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "Requester's name.", minLength: 1, maxLength: 100 },
-        email: { type: "string", description: "Requester's work email.", format: "email", maxLength: 254 },
-        company: { type: "string", description: "Requester's company.", maxLength: 120 },
-        role: { type: "string", description: "Requester's role.", maxLength: 120 },
-        application: { type: "string", description: "Application or sample type.", maxLength: 160 },
-        method: { type: "string", description: "Current endotoxin testing method.", enum: ["Gel-clot", "Chromogenic", "Turbidimetric", "Recombinant factor C", "Other / evaluating"] },
-        message: { type: "string", description: "What the requester would like to improve.", maxLength: 1000 },
-      },
-      required: ["name", "email", "application"],
-      additionalProperties: false,
-    },
-    annotations: { readOnlyHint: false, untrustedContentHint: false },
-    execute: (input) => {
-      for (const field of ["name", "email", "company", "role", "application", "method", "message"]) setFormValue(field, input[field]);
-      document.getElementById("contact")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return "The demo-request form is prepared. The user must review it, explicitly check the contact-consent box, and submit it themselves; nothing has been sent.";
-    },
+    name: "get_endotoxin_faqs",
+    description: "Return ClearSignal's frequently asked questions about endotoxin testing and sample submission.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true, untrustedContentHint: false },
+    execute: () => json({ faqs: endotoxinFaqs }),
   },
 ];
 
