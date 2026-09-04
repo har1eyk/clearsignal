@@ -137,3 +137,9 @@ npm run lint
 `test:db` runs migration and RLS assertions against local Supabase. `npm test`
 also builds the Cloudflare application and verifies the rendered site and the
 unauthenticated API boundary.
+
+## License
+
+ClearSignal is open-source software licensed under the [MIT License](LICENSE).
+Bundled third-party assets remain subject to their own license terms, including
+Paper Mono under the [SIL Open Font License](public/fonts/OFL-Paper-Mono.txt).
