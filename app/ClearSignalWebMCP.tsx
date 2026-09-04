@@ -266,7 +266,7 @@ export function ClearSignalWebMCP() {
   useEffect(() => {
     let active = true;
     let generation = 0;
-    let unsubscribe = () => undefined;
+    let unsubscribe: () => void = () => {};
 
     const resolveAccess = async (session: Session | null) => {
       const currentGeneration = ++generation;
@@ -392,7 +392,7 @@ export function ClearSignalWebMCP() {
     sessionStorage.removeItem(PENDING_ORDER_INPUT_KEY);
     const controller = new AbortController();
     void executeOrder(pending.input, controller.signal).then((result) => {
-      if (!result.ok && result.error.code !== "confirmation_declined" && result.error.code !== "cancelled") {
+      if (!result.ok && "error" in result && result.error.code !== "confirmation_declined" && result.error.code !== "cancelled") {
         setNotice({ kind: "error", message: result.error.message });
       }
     });

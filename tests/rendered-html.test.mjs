@@ -1,22 +1,79 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { createServer } from "node:net";
+import { after, before, test } from "node:test";
 
-async function worker() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${Math.random()}`);
-  return (await import(workerUrl.href)).default;
+const projectRoot = fileURLToPath(new URL("..", import.meta.url));
+const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
+
+let application;
+let origin;
+let serverOutput = "";
+
+async function availablePort() {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const address = probe.address();
+      if (!address || typeof address === "string") {
+        probe.close();
+        reject(new Error("Could not allocate a test port."));
+        return;
+      }
+      probe.close((error) => error ? reject(error) : resolve(address.port));
+    });
+  });
 }
 
-const environment = {
-  ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
-  IMAGES: { input() { throw new Error("Image transformation is not expected in this test"); } },
-};
-const executionContext = { waitUntil() {}, passThroughOnException() {} };
+async function waitForApplication() {
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    if (application.exitCode !== null) {
+      throw new Error(`Next.js exited before startup.\n${serverOutput}`);
+    }
+    try {
+      const response = await fetch(`${origin}/`, { signal: AbortSignal.timeout(1_000) });
+      if (response.ok) return;
+    } catch {
+      // The server is still starting.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out waiting for Next.js.\n${serverOutput}`);
+}
+
+function request(path, init) {
+  return fetch(`${origin}${path}`, init);
+}
+
+before(async () => {
+  const port = await availablePort();
+  origin = `http://127.0.0.1:${port}`;
+  application = spawn(process.execPath, [nextBin, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
+    cwd: projectRoot,
+    env: { ...process.env, NODE_ENV: "production" },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  application.stdout.on("data", (chunk) => { serverOutput += chunk; });
+  application.stderr.on("data", (chunk) => { serverOutput += chunk; });
+  await waitForApplication();
+}, { timeout: 35_000 });
+
+after(async () => {
+  if (!application || application.exitCode !== null) return;
+  application.kill("SIGTERM");
+  await Promise.race([
+    new Promise((resolve) => application.once("exit", resolve)),
+    new Promise((resolve) => setTimeout(resolve, 5_000)),
+  ]);
+  if (application.exitCode === null) application.kill("SIGKILL");
+});
 
 test("marks every rendered page for site-wide WebMCP registration", async () => {
-  const app = await worker();
   for (const path of ["/", "/login", "/reset-password", "/user", "/user/requests/new"]) {
-    const response = await app.fetch(new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }), environment, executionContext);
+    const response = await request(path, { headers: { accept: "text/html" } });
     assert.equal(response.status, 200, path);
     assert.equal(response.headers.get("origin-agent-cluster"), "?1", path);
     assert.equal(response.headers.get("permissions-policy"), "tools=(self)", path);
@@ -25,11 +82,7 @@ test("marks every rendered page for site-wide WebMCP registration", async () => 
 });
 
 test("server-renders the ClearSignal marketing page", async () => {
-  const response = await (await worker()).fetch(
-    new Request("http://localhost/", { headers: { accept: "text/html" } }),
-    environment,
-    executionContext,
-  );
+  const response = await request("/", { headers: { accept: "text/html" } });
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("origin-agent-cluster"), "?1");
   assert.equal(response.headers.get("permissions-policy"), "tools=(self)");
@@ -66,13 +119,11 @@ test("server-renders the ClearSignal marketing page", async () => {
 });
 
 test("laboratory endpoints reject unauthenticated requests consistently", async () => {
-  const app = await worker();
   for (const path of ["/api/lab/me", "/api/lab/dashboard-summary", "/api/lab/endotoxin-orders/preview", "/api/lab/endotoxin-orders/confirm"]) {
-    const response = await app.fetch(
-      new Request(`http://localhost${path}`, { method: path.includes("endotoxin-orders") ? "POST" : "GET", headers: { accept: "application/json" } }),
-      environment,
-      executionContext,
-    );
+    const response = await request(path, {
+      method: path.includes("endotoxin-orders") ? "POST" : "GET",
+      headers: { accept: "application/json" },
+    });
     assert.equal(response.status, 401);
     const body = await response.json();
     assert.equal(body.data, null);
@@ -82,8 +133,7 @@ test("laboratory endpoints reject unauthenticated requests consistently", async 
 });
 
 test("renders the account entry and recovery pages", async () => {
-  const app = await worker();
-  const login = await app.fetch(new Request("http://localhost/login", { headers: { accept: "text/html" } }), environment, executionContext);
+  const login = await request("/login", { headers: { accept: "text/html" } });
   assert.equal(login.status, 200);
   const loginHtml = await login.text();
   assert.match(loginHtml, /Sign in to continue/);
@@ -91,17 +141,13 @@ test("renders the account entry and recovery pages", async () => {
   assert.match(loginHtml, /Forgot your password/);
   assert.match(loginHtml, /data-webmcp-enabled="true"/);
 
-  const reset = await app.fetch(new Request("http://localhost/reset-password", { headers: { accept: "text/html" } }), environment, executionContext);
+  const reset = await request("/reset-password", { headers: { accept: "text/html" } });
   assert.equal(reset.status, 200);
   assert.match(await reset.text(), /Choose a new password/);
 });
 
 test("renders the new testing request route and intake shell", async () => {
-  const response = await (await worker()).fetch(
-    new Request("http://localhost/user/requests/new", { headers: { accept: "text/html" } }),
-    environment,
-    executionContext,
-  );
+  const response = await request("/user/requests/new", { headers: { accept: "text/html" } });
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /New testing request \| ClearSignal/);

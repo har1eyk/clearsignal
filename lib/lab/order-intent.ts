@@ -50,7 +50,12 @@ export async function verifyOrderIntent(token: string): Promise<PricedOrderInten
   if (!payloadPart || !signaturePart || extra) throw new ApiError(400, "The price intent is malformed", "invalid_price_intent");
   const payload = base64UrlDecode(payloadPart);
   const signature = base64UrlDecode(signaturePart);
-  const valid = await crypto.subtle.verify("HMAC", await hmacKey(), signature, payload);
+  const valid = await crypto.subtle.verify(
+    "HMAC",
+    await hmacKey(),
+    new Uint8Array(signature),
+    new Uint8Array(payload),
+  );
   if (!valid) throw new ApiError(400, "The price intent signature is invalid", "invalid_price_intent");
   try {
     return pricedOrderIntentSchema.parse(JSON.parse(new TextDecoder().decode(payload)));

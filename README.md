@@ -1,6 +1,6 @@
 # ClearSignal rFC laboratory backend
 
-ClearSignal is a vinext/Cloudflare site with a Supabase-backed research
+ClearSignal is a Next.js site with a Supabase-backed research
 laboratory API for recombinant factor C endpoint fluorescence testing. It keeps
 sample identity, custody, controlled methods, raw plate data, calculations,
 review decisions, and audit history connected from sample receipt through the
@@ -52,13 +52,41 @@ There is deliberately no public operation that can claim the first admin role.
    `/reset-password` URLs to the allowed Auth redirect URLs. New accounts remain
    outside every laboratory until an administrator grants membership.
 5. Bootstrap the first administrator through the SQL Editor as shown above.
-6. Configure `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as server environment
-   variables in the deployed site.
+6. Configure `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as Production
+   environment variables in Vercel.
 7. Regenerate checked types with `npm run db:types` after schema changes.
 
 Runtime requests use Supabase Auth, the HTTPS Data API, RLS, and private
 Supabase Storage. The direct database connection is migration-only. No
 service-role key is required by the application.
+
+## GitHub and Vercel deployment
+
+The repository is deployed as a native Next.js application from the `main`
+branch. Import the GitHub repository into Vercel with the Next.js framework
+preset, leave the Root Directory at the repository root, and use Node.js 22.
+
+Configure only the Production environment with:
+
+- `SUPABASE_URL`: the linked Supabase project URL
+- `SUPABASE_PUBLISHABLE_KEY`: the project's publishable key
+- `ORDER_INTENT_SIGNING_SECRET`: a newly generated secret of at least 32
+  characters
+
+Do not configure `SUPABASE_DB_URL` in Vercel. It is a local migration credential
+and must never be committed or exposed to the browser. Preview deployments are
+expected to build without production backend credentials and will not provide
+working account or laboratory operations.
+
+After the first production deployment, set the remote Supabase Auth Site URL to
+the exact Vercel production URL. Add that origin's `/user` and
+`/reset-password` URLs to the allowed redirect list, and retain the localhost
+redirects used for development. Add a custom domain only after its DNS is ready,
+then update the Supabase Site URL and redirects to match it.
+
+Before deploying schema changes, compare the local and remote migration lists
+and dry-run the push. Apply only pending migrations. The checked-in migrations
+also create the required `clearsignal-demo-order-progression` database cron job.
 
 ## Laboratory workflow
 
