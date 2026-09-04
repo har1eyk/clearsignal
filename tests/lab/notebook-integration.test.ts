@@ -59,3 +59,18 @@ test("integration page exposes top-level site tools and no iframe", async () => 
   assert.doesNotMatch(page, /<iframe/i);
   assert.match(component, /history\.replaceState/);
 });
+
+test("Vercel build keeps the notebook HTTP boundary and WebMCP policy", async () => {
+  const createRoute = await readFile(new URL("../../app/api/integrations/obsidian/sessions/route.ts", import.meta.url), "utf8");
+  const eventsRoute = await readFile(new URL("../../app/api/integrations/obsidian/sessions/[id]/events/route.ts", import.meta.url), "utf8");
+  const closeRoute = await readFile(new URL("../../app/api/integrations/obsidian/sessions/[id]/close/route.ts", import.meta.url), "utf8");
+  const nextConfig = await readFile(new URL("../../next.config.ts", import.meta.url), "utf8");
+  assert.match(createRoute, /export async function POST/);
+  assert.match(createRoute, /browser_path: `\/integrations\/obsidian/);
+  assert.match(eventsRoute, /export async function GET/);
+  assert.match(eventsRoute, /bearerToken\(request\)/);
+  assert.match(closeRoute, /export async function POST/);
+  assert.match(closeRoute, /close_obsidian_notebook_session/);
+  assert.match(nextConfig, /Permissions-Policy/);
+  assert.match(nextConfig, /tools=\(self\)/);
+});

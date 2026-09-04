@@ -72,13 +72,25 @@ after(async () => {
 });
 
 test("marks every rendered page for site-wide WebMCP registration", async () => {
-  for (const path of ["/", "/login", "/reset-password", "/user", "/user/requests/new"]) {
+  for (const path of ["/", "/integrations/obsidian", "/login", "/reset-password", "/user", "/user/requests/new"]) {
     const response = await request(path, { headers: { accept: "text/html" } });
     assert.equal(response.status, 200, path);
     assert.equal(response.headers.get("origin-agent-cluster"), "?1", path);
     assert.equal(response.headers.get("permissions-policy"), "tools=(self)", path);
     assert.match(await response.text(), /data-webmcp-status="registering"/, path);
   }
+});
+
+test("server-renders the Obsidian pairing surface and exposes its session API", async () => {
+  const page = await request("/integrations/obsidian?session=58000000-0000-4000-8000-000000000001", { headers: { accept: "text/html" } });
+  assert.equal(page.status, 200);
+  const html = await page.text();
+  assert.match(html, /Lab notebook assistant/);
+  assert.match(html, /Pairing with your notebook/);
+  assert.doesNotMatch(html, /<iframe/i);
+
+  const api = await request("/api/integrations/obsidian/sessions", { method: "GET", headers: { accept: "application/json" } });
+  assert.equal(api.status, 405);
 });
 
 test("server-renders the ClearSignal marketing page", async () => {
